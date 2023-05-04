@@ -272,6 +272,8 @@ int is_stream_socket(int st);
 int is_tcp_socket(int st);
 int is_sctp_socket(int st);
 const char *socket_type_name(SOCKET_TYPE st);
+const char *duration_name(unsigned long duration);
+const char *rate_name(unsigned long rate_kbps);
 const char *get_ioa_socket_cipher(ioa_socket_handle s);
 const char *get_ioa_socket_ssl_method(ioa_socket_handle s);
 SOCKET_TYPE get_ioa_socket_type(ioa_socket_handle s);

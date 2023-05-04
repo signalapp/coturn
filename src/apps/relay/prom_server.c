@@ -28,6 +28,8 @@ prom_counter_t *turn_total_traffic_peer_rcvb;
 prom_counter_t *turn_total_traffic_peer_sentp;
 prom_counter_t *turn_total_traffic_peer_sentb;
 
+prom_counter_t *turn_total_sessions;
+
 prom_gauge_t *turn_total_allocations;
 
 void start_prometheus_server(void) {
@@ -92,6 +94,11 @@ void start_prometheus_server(void) {
       "turn_total_traffic_peer_sentp", "Represents total finished sessions peer sent packets", 0, NULL));
   turn_total_traffic_peer_sentb = prom_collector_registry_must_register_metric(
       prom_counter_new("turn_total_traffic_peer_sentb", "Represents total finished sessions peer sent bytes", 0, NULL));
+
+  // Create total completed session counter metric
+  const char *total_sessions_labels[] = {"duration", "received_rate", "sent_rate"};
+  turn_total_sessions = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_total_sessions", "Represents total completed sessions", 3, total_sessions_labels));
 
   // Create total allocations number gauge metric
   const char *typeLabel[] = {"type"};
@@ -171,10 +178,16 @@ void prom_inc_allocation(SOCKET_TYPE type) {
   }
 }
 
-void prom_dec_allocation(SOCKET_TYPE type) {
+void prom_dec_allocation(SOCKET_TYPE type,
+                         unsigned long duration,
+                         unsigned long received_rate_kbps,
+                         unsigned long sent_rate_kbps) {
   if (turn_params.prometheus == 1) {
     const char *label[] = {socket_type_name(type)};
     prom_gauge_dec(turn_total_allocations, label);
+    const char *total_sessions_labels[] =
+            { duration_name(duration), rate_name(received_rate_kbps), rate_name(sent_rate_kbps) };
+    prom_counter_add(turn_total_sessions, 1, total_sessions_labels);
   }
 }
 
