@@ -66,7 +66,10 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
                                unsigned long sentp, unsigned long sentb, bool peer);
 
 void prom_inc_allocation(SOCKET_TYPE type);
-void prom_dec_allocation(SOCKET_TYPE type);
+void prom_dec_allocation(SOCKET_TYPE type,
+                         unsigned long duration,
+                         unsigned long received_rate_kbps,
+                         unsigned long sent_rate_kbps);
 
 void prom_inc_stun_binding_request(void);
 void prom_inc_stun_binding_response(void);
