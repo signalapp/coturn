@@ -3650,7 +3650,14 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type) {
                                       (unsigned long)(ss->t_peer_sent_packets), (unsigned long)(ss->t_peer_sent_bytes),
                                       true);
           }
-          prom_dec_allocation(socket_type);
+          turn_time_t ct = get_turn_server_time(server) - ss->start_time;
+          const uint32_t byte_to_kilobit = 125;
+          uint64_t received_rate_kbps = ss->received_rate / byte_to_kilobit;
+          uint64_t sent_rate_kbps = ss->sent_rate / byte_to_kilobit;
+          prom_dec_allocation(socket_type,
+                              (unsigned long)ct,
+                              (unsigned long)received_rate_kbps,
+                              (unsigned long)sent_rate_kbps);
         }
       }
     }
