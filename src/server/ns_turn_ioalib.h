@@ -35,7 +35,6 @@
 #ifndef __IOA_LIB__
 #define __IOA_LIB__
 
-#include <stdbool.h>
 #include "ns_turn_ioaddr.h"
 
 #ifdef __cplusplus
