@@ -576,8 +576,22 @@ const char *rate_name(unsigned long rate_kbps) {
         return "500kbps";
     } else if (rate_kbps < 1000) {
         return "1000kbps";
+    } else if (rate_kbps < 2500) {
+        return "2500kbps";
+    } else if (rate_kbps < 5000) {
+        return "5000kbps";
     } else {
         return "10000kbps";
+    }
+}
+
+const char *addr_family_name(int addr_family) {
+    if (addr_family == AF_INET) {
+        return "ipv4";
+    } else if (addr_family == AF_INET6) {
+        return "ipv6";
+    } else {
+        return "other";
     }
 }
 
