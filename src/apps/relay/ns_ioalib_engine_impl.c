@@ -3574,7 +3574,7 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh) {
 #endif
         {
           if (!refresh)
-            prom_inc_allocation(get_ioa_socket_type(ss->client_socket));
+            prom_inc_allocation(get_ioa_socket_type(ss->client_socket), get_ioa_socket_address_family(ss->client_socket));
         }
       }
     }
@@ -3655,6 +3655,7 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type) {
           uint64_t received_rate_kbps = ss->received_rate / byte_to_kilobit;
           uint64_t sent_rate_kbps = ss->sent_rate / byte_to_kilobit;
           prom_dec_allocation(socket_type,
+                              get_ioa_socket_address_family(ss->client_socket),
                               (unsigned long)ct,
                               (unsigned long)received_rate_kbps,
                               (unsigned long)sent_rate_kbps);

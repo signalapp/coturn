@@ -62,8 +62,9 @@ void start_prometheus_server(void);
 void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
                                unsigned long sentp, unsigned long sentb, bool peer);
 
-void prom_inc_allocation(SOCKET_TYPE type);
+void prom_inc_allocation(SOCKET_TYPE type, int addr_family);
 void prom_dec_allocation(SOCKET_TYPE type,
+                         int addr_family,
                          unsigned long duration,
                          unsigned long received_rate_kbps,
                          unsigned long sent_rate_kbps);

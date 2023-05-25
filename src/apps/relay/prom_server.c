@@ -101,14 +101,15 @@ void start_prometheus_server(void) {
       prom_counter_new("turn_total_traffic_peer_sentb", "Represents total finished sessions peer sent bytes", 0, NULL));
 
   // Create total completed session counter metric
-  const char *total_sessions_labels[] = {"duration", "received_rate", "sent_rate"};
+  const char *total_sessions_labels[] =
+          {"duration", "received_rate", "sent_rate" };
   turn_total_sessions = prom_collector_registry_must_register_metric(
       prom_counter_new("turn_total_sessions", "Represents total completed sessions", 3, total_sessions_labels));
 
   // Create total allocations number gauge metric
-  const char *typeLabel[] = {"type"};
+  const char *total_allocations_labels[] = {"type", "client_addr_family"};
   turn_total_allocations = prom_collector_registry_must_register_metric(
-      prom_gauge_new("turn_total_allocations", "Represents current allocations number", 1, typeLabel));
+      prom_gauge_new("turn_total_allocations", "Represents current allocations number", 2, total_allocations_labels));
 
   promhttp_set_active_collector_registry(NULL);
 
@@ -178,22 +179,22 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
   }
 }
 
-void prom_inc_allocation(SOCKET_TYPE type) {
+void prom_inc_allocation(SOCKET_TYPE type, int addr_family) {
   if (turn_params.prometheus == 1) {
-    const char *label[] = {socket_type_name(type)};
-    prom_gauge_inc(turn_total_allocations, label);
+    const char *labels[] = {socket_type_name(type), addr_family_name(addr_family) };
+    prom_gauge_inc(turn_total_allocations, labels);
   }
 }
 
 void prom_dec_allocation(SOCKET_TYPE type,
+                         int addr_family,
                          unsigned long duration,
                          unsigned long received_rate_kbps,
                          unsigned long sent_rate_kbps) {
   if (turn_params.prometheus == 1) {
-    const char *label[] = {socket_type_name(type)};
-    prom_gauge_dec(turn_total_allocations, label);
-    const char *total_sessions_labels[] =
-            { duration_name(duration), rate_name(received_rate_kbps), rate_name(sent_rate_kbps) };
+    const char *labels[] = {socket_type_name(type), addr_family_name(addr_family) };
+    prom_gauge_dec(turn_total_allocations, labels);
+    const char *total_sessions_labels[] = { duration_name(duration), rate_name(received_rate_kbps), rate_name(sent_rate_kbps) };
     prom_counter_add(turn_total_sessions, 1, total_sessions_labels);
   }
 }
