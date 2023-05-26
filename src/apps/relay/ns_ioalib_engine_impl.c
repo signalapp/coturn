@@ -3585,7 +3585,7 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh) {
   }
 }
 
-void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type) {
+void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type, int family) {
   if (a) {
     ts_ur_super_session *ss = (ts_ur_super_session *)(((allocation *)a)->owner);
     if (ss) {
@@ -3660,7 +3660,7 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type) {
           uint64_t received_rate_kbps = ss->received_rate / byte_to_kilobit;
           uint64_t sent_rate_kbps = ss->sent_rate / byte_to_kilobit;
           prom_dec_allocation(socket_type,
-                              get_ioa_socket_address_family(ss->client_socket),
+                              family,
                               (unsigned long)ct,
                               (unsigned long)received_rate_kbps,
                               (unsigned long)sent_rate_kbps);
