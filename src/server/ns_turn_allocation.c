@@ -48,11 +48,11 @@ void init_allocation(void *owner, allocation *a, ur_map *tcp_connections) {
   }
 }
 
-void clear_allocation(allocation *a, SOCKET_TYPE socket_type) {
+void clear_allocation(allocation *a, SOCKET_TYPE socket_type, int family) {
   if (a) {
 
     if (a->is_valid)
-      turn_report_allocation_delete(a, socket_type);
+      turn_report_allocation_delete(a, socket_type, family);
 
     if (a->tcs.elems) {
       size_t i;
