@@ -216,7 +216,7 @@ typedef enum _STUN_PROMETHEUS_METRIC_TYPE STUN_PROMETHEUS_METRIC_TYPE;
 void stun_report_binding(void *session, STUN_PROMETHEUS_METRIC_TYPE type);
 
 void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh);
-void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type);
+void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type, int family);
 void turn_report_session_usage(void *session, int force_invalid);
 
 /*
