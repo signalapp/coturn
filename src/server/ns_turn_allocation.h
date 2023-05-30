@@ -194,7 +194,7 @@ void turn_channel_delete(ch_info *chn);
 /////////// ALLOCATION ////////////
 
 void init_allocation(void *owner, allocation *a, ur_map *tcp_connections);
-void clear_allocation(allocation *a, SOCKET_TYPE socket_type);
+void clear_allocation(allocation *a, SOCKET_TYPE socket_type, int family);
 
 void turn_permission_clean(turn_permission_info *tinfo);
 
