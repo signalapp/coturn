@@ -538,24 +538,10 @@ const char *socket_type_name(SOCKET_TYPE st) {
 }
 
 const char *duration_name(unsigned long duration) {
-    if (duration < 1) {
-        return "1sec";
-    } else if (duration < 10) {
-        return "10sec";
-    } else if (duration < 30) {
-        return "30sec";
-    } else if (duration < 60) {
+    if (duration < 60) {
         return "1min";
     } else if (duration < 600) {
         return "10mins";
-    } else if (duration < 1800) {
-        return "30mins";
-    } else if (duration < 3600) {
-        return "1hr";
-    } else if (duration < 14400) {
-        return "4hrs";
-    } else if (duration < 43200) {
-        return "12hrs";
     } else if (duration < 86400) {
         return "24hrs";
     } else {
@@ -564,22 +550,10 @@ const char *duration_name(unsigned long duration) {
 }
 
 const char *rate_name(unsigned long rate_kbps) {
-    if (rate_kbps < 1) {
-        return "1kbps";
-    } else if (rate_kbps < 10) {
-        return "10kbps";
-    } else if (rate_kbps < 50) {
+    if (rate_kbps < 50) {
         return "50kbps";
-    } else if (rate_kbps < 100) {
-        return "100kbps";
-    } else if (rate_kbps < 500) {
-        return "500kbps";
-    } else if (rate_kbps < 1000) {
-        return "1000kbps";
     } else if (rate_kbps < 2500) {
         return "2500kbps";
-    } else if (rate_kbps < 5000) {
-        return "5000kbps";
     } else {
         return "10000kbps";
     }
