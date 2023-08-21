@@ -69,7 +69,6 @@ void prom_inc_allocation(SOCKET_TYPE type, int addr_family);
 void prom_dec_allocation(SOCKET_TYPE type,
                          int addr_family,
                          unsigned long duration,
-                         unsigned long received_rate_kbps,
                          unsigned long sent_rate_kbps);
 
 void prom_inc_stun_binding_request(void);
