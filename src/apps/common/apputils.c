@@ -541,7 +541,9 @@ const char *duration_name(unsigned long duration) {
 }
 
 const char *rate_name(unsigned long rate_kbps) {
-    if (rate_kbps < 50) {
+    if (rate_kbps < 1) {
+        return "1kbps";
+    } else if (rate_kbps < 50) {
         return "50kbps";
     } else if (rate_kbps < 2500) {
         return "2500kbps";
