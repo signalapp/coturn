@@ -32,6 +32,12 @@ prom_counter_t *turn_total_sessions;
 
 prom_gauge_t *turn_total_allocations;
 
+prom_histogram_buckets_t *turn_rtt_buckets;
+
+prom_histogram_t *turn_rtt_client;
+prom_histogram_t *turn_rtt_peer;
+prom_histogram_t *turn_rtt_combined;
+
 void start_prometheus_server(void) {
   if (turn_params.prometheus == 0) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "prometheus collector disabled, not started\n");
@@ -105,6 +111,18 @@ void start_prometheus_server(void) {
   const char *total_allocations_labels[] = {"type", "client_addr_family"};
   turn_total_allocations = prom_collector_registry_must_register_metric(
       prom_gauge_new("turn_total_allocations", "Represents current allocations number", 2, total_allocations_labels));
+
+  // Create round trip time histogram metrics
+  turn_rtt_buckets = prom_histogram_buckets_new(7, 0.025, 0.05, 0.100, 0.200, 0.400, 0.800, 1.5);
+
+  turn_rtt_client = prom_collector_registry_must_register_metric(
+      prom_histogram_new("turn_rtt_client", "Represents measured round trip time of client with channel", turn_rtt_buckets, 0, NULL));
+
+  turn_rtt_peer = prom_collector_registry_must_register_metric(
+      prom_histogram_new("turn_rtt_peer", "Represents measured round trip time of peer with channel", turn_rtt_buckets, 0, NULL));
+
+  turn_rtt_combined = prom_collector_registry_must_register_metric(
+      prom_histogram_new("turn_rtt_combined", "Represents measured combined round trip time of channel", turn_rtt_buckets, 0, NULL));
 
   promhttp_set_active_collector_registry(NULL);
 
@@ -206,6 +224,24 @@ void prom_inc_stun_binding_response(void) {
 void prom_inc_stun_binding_error(void) {
   if (turn_params.prometheus == 1) {
     prom_counter_add(stun_binding_error, 1, NULL);
+  }
+}
+
+void prom_observe_rtt_client(int microseconds) {
+  if (turn_params.prometheus == 1) {
+    prom_histogram_observe(turn_rtt_client, microseconds / 1000000.0, NULL);
+  }
+}
+
+void prom_observe_rtt_peer(int microseconds) {
+  if (turn_params.prometheus == 1) {
+    prom_histogram_observe(turn_rtt_peer, microseconds / 1000000.0, NULL);
+  }
+}
+
+void prom_observe_rtt_combined(int microseconds) {
+  if (turn_params.prometheus == 1) {
+    prom_histogram_observe(turn_rtt_combined, microseconds / 1000000.0, NULL);
   }
 }
 
