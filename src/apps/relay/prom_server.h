@@ -56,9 +56,9 @@ extern prom_gauge_t *turn_total_allocations_number;
 
 extern prom_histogram_buckets_t *turn_rtt_buckets;
 
-extern prom_histogram_t *turn_rtt_client;
-extern prom_histogram_t *turn_rtt_peer;
-extern prom_histogram_t *turn_rtt_combined;
+extern prom_counter_t *turn_rtt_client[8];
+extern prom_counter_t *turn_rtt_peer[8];
+extern prom_counter_t *turn_rtt_combined[8];
 
 #define TURN_ALLOC_STR_MAX_SIZE (20)
 
@@ -81,6 +81,7 @@ void prom_inc_stun_binding_request(void);
 void prom_inc_stun_binding_response(void);
 void prom_inc_stun_binding_error(void);
 
+void prom_observe_rtt(prom_counter_t *counter[8], int microseconds);
 void prom_observe_rtt_client(int microseconds);
 void prom_observe_rtt_peer(int microseconds);
 void prom_observe_rtt_combined(int microseconds);
