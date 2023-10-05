@@ -31,6 +31,7 @@
 #include "ns_turn_server.h"
 
 #include "../apps/relay/ns_ioalib_impl.h"
+// Signal change to add rtt metrics
 #include "../apps/relay/prom_server.h"
 #include "ns_turn_allocation.h"
 #include "ns_turn_ioalib.h"
@@ -2877,6 +2878,7 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
   return 0;
 }
 
+// Signal change to add rtt metrics
 /////////////// inspect relayed packets, they might be ICE binds ///////////////
 
 static void inspect_binds (ioa_net_data *in_buffer, turn_permission_info *tinfo, int from_peer, int is_channel) {
@@ -2949,7 +2951,7 @@ static void inspect_binds (ioa_net_data *in_buffer, turn_permission_info *tinfo,
           ); */
         }
         // don't process retransmited responses
-        tinfo->pings[from_peer].ts.tv_sec = 0;
+        tinfo->pings[from_client].ts.tv_sec = 0;
       }
     }
   }
@@ -3037,6 +3039,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, in
           len = 0;
           ioa_network_buffer_set_size(nbh, len);
         }
+        // Signal change to add rtt metrics
         inspect_binds(in_buffer, tinfo, 0, 0);
 
         ioa_network_buffer_header_init(nbh);
@@ -4090,6 +4093,7 @@ static int write_to_peerchannel(ts_ur_super_session *ss, uint16_t chnum, ioa_net
       ioa_network_buffer_add_offset_size(in_buffer->nbh, STUN_CHANNEL_HEADER_LENGTH, 0,
                                          ioa_network_buffer_get_size(in_buffer->nbh) - STUN_CHANNEL_HEADER_LENGTH);
 
+      // Signal change to add rtt metrics
       turn_permission_info *tinfo = (turn_permission_info *)(chn->owner);
       inspect_binds(in_buffer, tinfo, 0, 1);
 
@@ -4756,6 +4760,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data
       turn_permission_info *tinfo = allocation_get_permission(a, &(in_buffer->src_addr));
       if (tinfo) {
         chnum = get_turn_channel_number(tinfo, &(in_buffer->src_addr));
+        // Signal change to add rtt metrics
         inspect_binds(in_buffer, tinfo, 1, chnum != 0);
       } else if (!(server->server_relay)) {
         return;

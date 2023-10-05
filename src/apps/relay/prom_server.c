@@ -32,6 +32,7 @@ prom_counter_t *turn_total_sessions;
 
 prom_gauge_t *turn_total_allocations;
 
+// Signal change to add rtt metrics
 prom_counter_t *turn_rtt_client[8];
 prom_counter_t *turn_rtt_peer[8];
 prom_counter_t *turn_rtt_combined[8];
@@ -110,6 +111,7 @@ void start_prometheus_server(void) {
   turn_total_allocations = prom_collector_registry_must_register_metric(
       prom_gauge_new("turn_total_allocations", "Represents current allocations number", 2, total_allocations_labels));
 
+  // Signal change to add rtt metrics
   // Create round trip time pseudo-histogram metrics
   // values must be kept in sync with observation function below
 
@@ -148,21 +150,21 @@ void start_prometheus_server(void) {
       prom_counter_new("turn_rtt_peer_more", "Represents measured round trip time of peer with channel", 0, NULL));
 
   turn_rtt_combined[0] = prom_collector_registry_must_register_metric(
-      prom_counter_new("turn_rtt_combined_le_25ms", "Represents combined round trip time of channel channel", 0, NULL));
+      prom_counter_new("turn_rtt_combined_le_25ms", "Represents combined round trip time of channel", 0, NULL));
   turn_rtt_combined[1] = prom_collector_registry_must_register_metric(
-      prom_counter_new("turn_rtt_combined_le_50ms", "Represents combined round trip time of channel channel", 0, NULL));
+      prom_counter_new("turn_rtt_combined_le_50ms", "Represents combined round trip time of channel", 0, NULL));
   turn_rtt_combined[2] = prom_collector_registry_must_register_metric(
-      prom_counter_new("turn_rtt_combined_le_100ms", "Represents combined round trip time of channel channel", 0, NULL));
+      prom_counter_new("turn_rtt_combined_le_100ms", "Represents combined round trip time of channel", 0, NULL));
   turn_rtt_combined[3] = prom_collector_registry_must_register_metric(
-      prom_counter_new("turn_rtt_combined_le_200ms", "Represents combined round trip time of channel channel", 0, NULL));
+      prom_counter_new("turn_rtt_combined_le_200ms", "Represents combined round trip time of channel", 0, NULL));
   turn_rtt_combined[4] = prom_collector_registry_must_register_metric(
-      prom_counter_new("turn_rtt_combined_le_400ms", "Represents combined round trip time of channel channel", 0, NULL));
+      prom_counter_new("turn_rtt_combined_le_400ms", "Represents combined round trip time of channel", 0, NULL));
   turn_rtt_combined[5] = prom_collector_registry_must_register_metric(
-      prom_counter_new("turn_rtt_combined_le_800ms", "Represents combined round trip time of channel channel", 0, NULL));
+      prom_counter_new("turn_rtt_combined_le_800ms", "Represents combined round trip time of channel", 0, NULL));
   turn_rtt_combined[6] = prom_collector_registry_must_register_metric(
-      prom_counter_new("turn_rtt_combined_le_1500ms", "Represents combined round trip time of channel channel", 0, NULL));
+      prom_counter_new("turn_rtt_combined_le_1500ms", "Represents combined round trip time of channel", 0, NULL));
   turn_rtt_combined[7] = prom_collector_registry_must_register_metric(
-      prom_counter_new("turn_rtt_combined_more", "Represents combined round trip time of channel channel", 0, NULL));
+      prom_counter_new("turn_rtt_combined_more", "Represents combined round trip time of channel", 0, NULL));
 
   promhttp_set_active_collector_registry(NULL);
 
@@ -267,6 +269,7 @@ void prom_inc_stun_binding_error(void) {
   }
 }
 
+// Signal change to add rtt metrics
 void prom_observe_rtt(prom_counter_t *counter[8], int microseconds) {
   if (microseconds <= 25000) {
     prom_counter_add(counter[0], 1, NULL);
@@ -291,7 +294,6 @@ void prom_observe_rtt(prom_counter_t *counter[8], int microseconds) {
   }
   prom_counter_add(counter[7], 1, NULL);
 }
-
 
 void prom_observe_rtt_client(int microseconds) {
   if (turn_params.prometheus == 1) {
