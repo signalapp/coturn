@@ -2940,16 +2940,6 @@ static void inspect_binds (ioa_net_data *in_buffer, turn_permission_info *tinfo,
 #endif
 
           }
-
-/*        uint8_t saddr[257] = "\0";
-          addr_to_string(&in_buffer->src_addr, saddr);
-
-          clock_gettime(CLOCK_REALTIME, &now);
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%02ld.%03ld (from peer: %d) (is channel: %d) bind response from %s %dus\n",
-                    now.tv_sec % 60, now.tv_nsec / 1000000,
-                    from_peer, is_channel, saddr, diffus
-          ); */
-        }
         // don't process retransmited responses
         tinfo->pings[from_client].ts.tv_sec = 0;
       }
