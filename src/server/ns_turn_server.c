@@ -31,6 +31,8 @@
 #include "ns_turn_server.h"
 
 #include "../apps/relay/ns_ioalib_impl.h"
+// Signal change to add rtt metrics
+#include "../apps/relay/prom_server.h"
 #include "ns_turn_allocation.h"
 #include "ns_turn_ioalib.h"
 #include "ns_turn_msg_defs.h" // for STUN_ATTRIBUTE_NONCE
@@ -2936,6 +2938,76 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
   return 0;
 }
 
+// Signal change to add rtt metrics
+/////////////// inspect relayed packets, they might be ICE binds ///////////////
+
+static void inspect_binds (ioa_net_data *in_buffer, turn_permission_info *tinfo, int from_peer, int is_channel) {
+  if (!in_buffer || !tinfo || !(from_peer == 0 || from_peer == 1)) {
+    return;
+  }
+  size_t len = ioa_network_buffer_get_size(in_buffer->nbh);
+  uint8_t *buf = ioa_network_buffer_data(in_buffer->nbh);
+  if (stun_is_command_message_str(buf, len) && (stun_get_method_str(buf, len) == STUN_METHOD_BINDING)) {
+    if (stun_is_request_str(buf, len)) {
+      stun_tid tid;
+      stun_tid_from_message_str(buf, len, &tid);
+
+      // only process if this is the first received request
+      if (!stun_tid_equals(&tid, &tinfo->pings[from_peer].tid)) {
+        stun_tid_cpy(&tinfo->pings[from_peer].tid, &tid);
+        clock_gettime(CLOCK_MONOTONIC, &tinfo->pings[from_peer].ts);
+      }
+    } else if (stun_is_response_str(buf, len)) {
+      // invert from_peer, because we're processing replies
+      int from_client;
+      if (from_peer) {
+        from_client = 0;
+      } else {
+        from_client = 1;
+      }
+
+
+      if (tinfo->pings[from_client].ts.tv_sec == 0) {
+        return;
+      }
+
+      stun_tid tid;
+      stun_tid_from_message_str(buf, len, &tid);
+
+      if (stun_tid_equals(&tid, &tinfo->pings[from_client].tid)) {
+        struct timespec now;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+
+        if (now.tv_sec >= tinfo->pings[from_client].ts.tv_sec &&
+            now.tv_sec <= tinfo->pings[from_client].ts.tv_sec + 60) {
+
+          int diffus = (now.tv_sec - tinfo->pings[from_client].ts.tv_sec) * 1000000;
+          diffus += (now.tv_nsec - tinfo->pings[from_client].ts.tv_nsec) / 1000;
+          if (diffus > 0) {
+            tinfo->pings[from_client].lastrttus = diffus;
+
+#if !defined(TURN_NO_PROMETHEUS)
+            if (is_channel) {
+                if (from_client) {
+                  prom_observe_rtt_client(diffus);
+                } else {
+                  prom_observe_rtt_peer(diffus);
+                }
+                if (tinfo->pings[from_peer].lastrttus > 0) {
+                  prom_observe_rtt_combined(diffus + tinfo->pings[from_peer].lastrttus );
+                }
+            }
+#endif
+
+          }
+        }
+        // don't process retransmited responses
+        tinfo->pings[from_client].ts.tv_sec = 0;
+      }
+    }
+  }
+}
+
 static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, int *err_code, const uint8_t **reason,
                             uint16_t *unknown_attrs, uint16_t *ua_num, ioa_net_data *in_buffer) {
 
@@ -3021,6 +3093,9 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, in
           len = 0;
           ioa_network_buffer_set_size(nbh, len);
         }
+        // Signal change to add rtt metrics
+        inspect_binds(in_buffer, tinfo, 0, 0);
+
         ioa_network_buffer_header_init(nbh);
         int skip = 0;
         send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss, peer_addr.ss.sa_family), &peer_addr, nbh,
@@ -4082,6 +4157,10 @@ static int write_to_peerchannel(ts_ur_super_session *ss, uint16_t chnum, ioa_net
       ioa_network_buffer_add_offset_size(in_buffer->nbh, STUN_CHANNEL_HEADER_LENGTH, 0,
                                          ioa_network_buffer_get_size(in_buffer->nbh) - STUN_CHANNEL_HEADER_LENGTH);
 
+      // Signal change to add rtt metrics
+      turn_permission_info *tinfo = (turn_permission_info *)(chn->owner);
+      inspect_binds(in_buffer, tinfo, 0, 1);
+
       ioa_network_buffer_header_init(nbh);
 
       int skip = 0;
@@ -4801,6 +4880,8 @@ static void peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data
   turn_permission_info *tinfo = allocation_get_permission(a, &(in_buffer->src_addr));
   if (tinfo) {
     chnum = get_turn_channel_number(tinfo, &(in_buffer->src_addr));
+    // Signal change to add rtt metrics
+    inspect_binds(in_buffer, tinfo, 1, chnum != 0);
   } else if (!(server->server_relay)) {
     return;
   }
