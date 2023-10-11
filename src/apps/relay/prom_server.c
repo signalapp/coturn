@@ -32,6 +32,11 @@ prom_counter_t *turn_total_sessions;
 
 prom_gauge_t *turn_total_allocations;
 
+// Signal change to add rtt metrics
+prom_counter_t *turn_rtt_client[8];
+prom_counter_t *turn_rtt_peer[8];
+prom_counter_t *turn_rtt_combined[8];
+
 void start_prometheus_server(void) {
   if (turn_params.prometheus == 0) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "prometheus collector disabled, not started\n");
@@ -105,6 +110,61 @@ void start_prometheus_server(void) {
   const char *total_allocations_labels[] = {"type", "client_addr_family"};
   turn_total_allocations = prom_collector_registry_must_register_metric(
       prom_gauge_new("turn_total_allocations", "Represents current allocations number", 2, total_allocations_labels));
+
+  // Signal change to add rtt metrics
+  // Create round trip time pseudo-histogram metrics
+  // values must be kept in sync with observation function below
+
+  turn_rtt_client[0] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_client_le_25ms", "Represents measured round trip time of client with channel", 0, NULL));
+  turn_rtt_client[1] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_client_le_50ms", "Represents measured round trip time of client with channel", 0, NULL));
+  turn_rtt_client[2] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_client_le_100ms", "Represents measured round trip time of client with channel", 0, NULL));
+  turn_rtt_client[3] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_client_le_200ms", "Represents measured round trip time of client with channel", 0, NULL));
+  turn_rtt_client[4] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_client_le_400ms", "Represents measured round trip time of client with channel", 0, NULL));
+  turn_rtt_client[5] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_client_le_800ms", "Represents measured round trip time of client with channel", 0, NULL));
+  turn_rtt_client[6] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_client_le_1500ms", "Represents measured round trip time of client with channel", 0, NULL));
+  turn_rtt_client[7] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_client_more", "Represents measured round trip time of client with channel", 0, NULL));
+
+  turn_rtt_peer[0] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_peer_le_25ms", "Represents measured round trip time of peer with channel", 0, NULL));
+  turn_rtt_peer[1] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_peer_le_50ms", "Represents measured round trip time of peer with channel", 0, NULL));
+  turn_rtt_peer[2] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_peer_le_100ms", "Represents measured round trip time of peer with channel", 0, NULL));
+  turn_rtt_peer[3] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_peer_le_200ms", "Represents measured round trip time of peer with channel", 0, NULL));
+  turn_rtt_peer[4] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_peer_le_400ms", "Represents measured round trip time of peer with channel", 0, NULL));
+  turn_rtt_peer[5] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_peer_le_800ms", "Represents measured round trip time of peer with channel", 0, NULL));
+  turn_rtt_peer[6] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_peer_le_1500ms", "Represents measured round trip time of peer with channel", 0, NULL));
+  turn_rtt_peer[7] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_peer_more", "Represents measured round trip time of peer with channel", 0, NULL));
+
+  turn_rtt_combined[0] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_combined_le_25ms", "Represents combined round trip time of channel", 0, NULL));
+  turn_rtt_combined[1] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_combined_le_50ms", "Represents combined round trip time of channel", 0, NULL));
+  turn_rtt_combined[2] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_combined_le_100ms", "Represents combined round trip time of channel", 0, NULL));
+  turn_rtt_combined[3] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_combined_le_200ms", "Represents combined round trip time of channel", 0, NULL));
+  turn_rtt_combined[4] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_combined_le_400ms", "Represents combined round trip time of channel", 0, NULL));
+  turn_rtt_combined[5] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_combined_le_800ms", "Represents combined round trip time of channel", 0, NULL));
+  turn_rtt_combined[6] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_combined_le_1500ms", "Represents combined round trip time of channel", 0, NULL));
+  turn_rtt_combined[7] = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_rtt_combined_more", "Represents combined round trip time of channel", 0, NULL));
 
   promhttp_set_active_collector_registry(NULL);
 
@@ -206,6 +266,50 @@ void prom_inc_stun_binding_response(void) {
 void prom_inc_stun_binding_error(void) {
   if (turn_params.prometheus == 1) {
     prom_counter_add(stun_binding_error, 1, NULL);
+  }
+}
+
+// Signal change to add rtt metrics
+void prom_observe_rtt(prom_counter_t *counter[8], int microseconds) {
+  if (microseconds <= 25000) {
+    prom_counter_add(counter[0], 1, NULL);
+  }
+  if (microseconds <= 50000) {
+    prom_counter_add(counter[1], 1, NULL);
+  }
+  if (microseconds <= 100000) {
+    prom_counter_add(counter[2], 1, NULL);
+  }
+  if (microseconds <= 200000) {
+    prom_counter_add(counter[3], 1, NULL);
+  }
+  if (microseconds <= 400000) {
+    prom_counter_add(counter[4], 1, NULL);
+  }
+  if (microseconds <= 800000) {
+    prom_counter_add(counter[5], 1, NULL);
+  }
+  if (microseconds <= 1500000) {
+    prom_counter_add(counter[6], 1, NULL);
+  }
+  prom_counter_add(counter[7], 1, NULL);
+}
+
+void prom_observe_rtt_client(int microseconds) {
+  if (turn_params.prometheus == 1) {
+    prom_observe_rtt(turn_rtt_client, microseconds);
+  }
+}
+
+void prom_observe_rtt_peer(int microseconds) {
+  if (turn_params.prometheus == 1) {
+    prom_observe_rtt(turn_rtt_peer, microseconds);
+  }
+}
+
+void prom_observe_rtt_combined(int microseconds) {
+  if (turn_params.prometheus == 1) {
+    prom_observe_rtt(turn_rtt_combined, microseconds);
   }
 }
 

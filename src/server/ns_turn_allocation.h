@@ -137,6 +137,13 @@ void ch_map_clean(ch_map *map);
 
 ////////////////////////////
 
+// Signal change to add rtt metrics
+typedef struct _turn_ice_ping_info {
+  stun_tid tid;
+  struct timespec ts;
+  int lastrttus;
+} turn_ice_ping_info;
+
 typedef struct _turn_permission_info {
   int allocated;
   lm_map chns;
@@ -146,6 +153,8 @@ typedef struct _turn_permission_info {
   void *owner; // a
   int verbose;
   unsigned long long session_id;
+  // Signal change to add rtt metrics
+  turn_ice_ping_info pings[2]; // 0 measuring round trip to peer, 1 measuring round trip to client
 } turn_permission_info;
 
 typedef struct _turn_permission_slot {
