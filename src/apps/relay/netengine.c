@@ -44,6 +44,10 @@ static unsigned int barrier_count = 0;
 static pthread_barrier_t barrier;
 #endif
 
+// Signal change to add rtt metrics
+
+static pthread_barrier_t rtt_barrier;
+
 ////////////// Auth Server ////////////////
 
 typedef unsigned char authserver_id;
@@ -695,6 +699,37 @@ err:
   return ret;
 }
 
+// Signal change to add rtt metrics
+int send_cycle_rtt_map_to_relay(turnserver_id id) {
+  int ret = 0;
+
+  struct message_to_relay sm;
+  memset(&sm, 0, sizeof(struct message_to_relay));
+  sm.t = RMT_CYCLE_RTT_MAP;
+
+  struct relay_server *rs = get_relay_server(id);
+  if (!rs) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: can't find relay for turn_server_id: %d\n", __FUNCTION__, (int)id);
+    ret = -1;
+    goto err;
+  }
+
+  sm.relay_server = rs;
+
+  {
+    struct evbuffer *output = bufferevent_get_output(rs->out_buf);
+    if (output) {
+      evbuffer_add(output, &sm, sizeof(struct message_to_relay));
+    } else {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Empty output buffer\n", __FUNCTION__);
+      ret = -1;
+    }
+  }
+
+err:
+  return ret;
+}
+
 static int handle_relay_message(relay_server_handle rs, struct message_to_relay *sm) {
   if (rs && sm) {
 
@@ -773,6 +808,18 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 
       ioa_network_buffer_delete(rs->ioa_eng, sm->m.sm.nd.nbh);
       sm->m.sm.nd.nbh = NULL;
+      break;
+    }
+    // Signal change to add rtt metric
+    case RMT_CYCLE_RTT_MAP: {
+      rs->server.rtt_ms_mins = ur_map_create();
+      int br = 0;
+      do {
+        br = pthread_barrier_wait(&rtt_barrier);
+        if ((br < 0) && (br != PTHREAD_BARRIER_SERIAL_THREAD)) {
+          perror("rtt barrier wait (message)");
+        }
+      } while ((br < 0) && (br != PTHREAD_BARRIER_SERIAL_THREAD));
       break;
     }
     default: {
@@ -1918,3 +1965,61 @@ void enable_drain_mode(void) {
   turn_params.drain_turn_server = true;
 }
 ///////////////////////////////
+
+// Signal change to add rtt metrics
+size_t cycle_rtt_ms_maps(ur_map **rtt_ms_maps, size_t len) {
+  if (len != 1 + ((turnserver_id)-1)) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "cycle_rtt_ms_maps, length is %ld, must be %ld\n", len,
+                  1L + ((turnserver_id)-1));
+    return 0;
+  }
+  size_t count = 0;
+  for (size_t i = 0; i < get_real_general_relay_servers_number(); i++) {
+    if (general_relay_servers[i] && general_relay_servers[i]->server.rtt_ms_mins) {
+      rtt_ms_maps[count] = general_relay_servers[i]->server.rtt_ms_mins;
+      ++count;
+    }
+  }
+  for (size_t i = 0; i < get_real_udp_relay_servers_number(); i++) {
+    if (udp_relay_servers[i] && udp_relay_servers[i]->server.rtt_ms_mins) {
+      rtt_ms_maps[count] = udp_relay_servers[i]->server.rtt_ms_mins;
+      ++count;
+    }
+  }
+
+  static size_t last_count = 0;
+  if (last_count != count) {
+    if (last_count) {
+      if (pthread_barrier_destroy(&rtt_barrier) != 0) {
+        perror("rtt barrier destroy");
+        return 0;
+      }
+    }
+    if (pthread_barrier_init(&rtt_barrier, NULL, count + 1) != 0) {
+      perror("rtt barrier init");
+      return 0;
+    }
+    last_count = count;
+  }
+
+  for (size_t i = 0; i < get_real_general_relay_servers_number(); i++) {
+    if (general_relay_servers[i] && general_relay_servers[i]->server.rtt_ms_mins) {
+      send_cycle_rtt_map_to_relay(i);
+    }
+  }
+  for (size_t i = 0; i < get_real_udp_relay_servers_number(); i++) {
+    if (udp_relay_servers[i] && udp_relay_servers[i]->server.rtt_ms_mins) {
+      send_cycle_rtt_map_to_relay(i + TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP);
+    }
+  }
+
+  int br = 0;
+  do {
+    br = pthread_barrier_wait(&rtt_barrier);
+    if ((br < 0) && (br != PTHREAD_BARRIER_SERIAL_THREAD)) {
+      perror("rtt barrier wait");
+    }
+  } while ((br < 0) && (br != PTHREAD_BARRIER_SERIAL_THREAD));
+
+  return count;
+}

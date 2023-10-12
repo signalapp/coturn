@@ -72,7 +72,15 @@ extern int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY;
 
 typedef uint8_t turnserver_id;
 
-enum _MESSAGE_TO_RELAY_TYPE { RMT_UNKNOWN = 0, RMT_SOCKET, RMT_CB_SOCKET, RMT_MOBILE_SOCKET, RMT_CANCEL_SESSION };
+// Signal change to add rtt metrics
+enum _MESSAGE_TO_RELAY_TYPE {
+  RMT_UNKNOWN = 0,
+  RMT_SOCKET,
+  RMT_CB_SOCKET,
+  RMT_MOBILE_SOCKET,
+  RMT_CANCEL_SESSION,
+  RMT_CYCLE_RTT_MAP
+};
 typedef enum _MESSAGE_TO_RELAY_TYPE MESSAGE_TO_RELAY_TYPE;
 
 ///////// ALLOCATION DEFAULT ADDRESS FAMILY TYPES /////////////////////
@@ -206,6 +214,10 @@ struct _turn_turnserver {
 
   /* Set to true on SIGUSR1 */
   bool is_draining;
+
+  // Signal change to add rtt metrics
+  /* measured round trip minimums per network */
+  ur_map *rtt_ms_mins;
 };
 
 const char *get_version(turn_turnserver *server);

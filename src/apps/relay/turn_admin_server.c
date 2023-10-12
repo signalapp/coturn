@@ -85,6 +85,9 @@
 
 #include "tls_listener.h"
 
+// Signal change to add rtt metrics
+#include <fcntl.h>
+#include <unistd.h>
 ///////////////////////////////
 
 struct bufferevent;
@@ -1426,6 +1429,11 @@ void setup_admin_thread(void) {
   }
 
   adminserver.sessions = ur_map_create();
+
+  // Signal change to add rtt metrics
+  // run once a day
+  adminserver.rtt_ev =
+      set_ioa_timer(adminserver.e, 86400, 0, admin_server_rtt_timer_handler, NULL, 1, "admin_server_rtt_timer");
 }
 
 void admin_server_receive_message(struct bufferevent *bev, void *ptr) {
@@ -3847,3 +3855,82 @@ void send_https_socket(ioa_socket_handle s) {
 }
 
 ///////////////////////////////
+// Signal change to add rtt metrics
+
+ur_map *rtt_maps[1 + ((turnserver_id)-1)] = {0};
+size_t rtt_maps_count = 0;
+size_t rtt_map_current = 0;
+FILE *rtt_file;
+
+int rtt_foreach(ur_map_key_type key, ur_map_value_type value) {
+  if (!value) {
+    return 0;
+  }
+  ur_map_value_type min = value;
+  for (size_t i = rtt_map_current + 1; i < rtt_maps_count; ++i) {
+    if (ur_map_get(rtt_maps[i], key, &value)) {
+      ur_map_put(rtt_maps[i], key, 0);
+      if (value && value < min) {
+        min = value;
+      }
+    }
+  }
+  // value is stored as measured rtt in ms + 1
+  value -= 1;
+  char saddr[INET6_ADDRSTRLEN] = "\0";
+  if (key & (1L << 63)) {
+    struct sockaddr_in6 addr = {0};
+    addr.sin6_family = AF_INET6;
+    size_t i = 6;
+    while (i--) {
+      addr.sin6_addr.s6_addr[i] = key & 0xFF;
+      key >>= 8;
+    }
+    inet_ntop(AF_INET6, &addr.sin6_addr, saddr, sizeof(saddr));
+    fprintf(rtt_file, "%s/48,%ld\n", saddr, min);
+  } else {
+    struct sockaddr_in addr = {0};
+    addr.sin_family = AF_INET;
+    key <<= 8;
+    addr.sin_addr.s_addr = htonl(key & 0xFFFFFFFF);
+    inet_ntop(AF_INET, &addr.sin_addr, saddr, sizeof(saddr));
+    fprintf(rtt_file, "%s/24,%ld\n", saddr, min);
+  }
+  return 0;
+}
+
+void admin_server_rtt_timer_handler(ioa_engine *engine, void *arg) {
+  UNUSED_ARG(engine);
+  UNUSED_ARG(arg);
+  int fd = open("/var/tmp/rtt_dump.tmp", O_WRONLY | O_CREAT | O_NOFOLLOW | O_TRUNC, S_IRUSR | S_IWUSR);
+  if (fd == -1) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "error opening temporary file during rtt timer (%d)\n", errno);
+    return;
+  }
+
+  rtt_file = fdopen(fd, "w");
+  if (rtt_file == NULL) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "fdopen error during rtt timer\n");
+    close(fd);
+    return;
+  }
+
+  fprintf(rtt_file, "network,rtt_ms\n");
+
+  rtt_maps_count = cycle_rtt_ms_maps(rtt_maps, sizeof(rtt_maps) / sizeof(rtt_maps[0]));
+
+  for (rtt_map_current = 0; rtt_map_current < rtt_maps_count; ++rtt_map_current) {
+    ur_map_foreach(rtt_maps[rtt_map_current], rtt_foreach);
+    ur_map_free(&rtt_maps[rtt_map_current]);
+  }
+
+  if (fflush(rtt_file) != 0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "fflush /var/tmp/rtt_dump.tmp failed, not relinking (%d)\n", errno);
+  } else {
+    if (rename("/var/tmp/rtt_dump.tmp", "/var/tmp/rtt_dump") == -1) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "could not rename rtt dump into /var/tmp/rtt_dump (%d)\n", errno);
+    }
+  }
+  fclose(rtt_file);
+  rtt_file = NULL;
+}

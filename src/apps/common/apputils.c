@@ -538,37 +538,37 @@ const char *socket_type_name(SOCKET_TYPE st) {
 }
 
 const char *duration_name(unsigned long duration) {
-    if (duration < 60) {
-        return "1min";
-    } else if (duration < 600) {
-        return "10mins";
-    } else if (duration < 86400) {
-        return "24hrs";
-    } else {
-        return "days";
-    }
+  if (duration < 60) {
+    return "1min";
+  } else if (duration < 600) {
+    return "10mins";
+  } else if (duration < 86400) {
+    return "24hrs";
+  } else {
+    return "days";
+  }
 }
 
 const char *rate_name(unsigned long rate_kbps) {
-    if (rate_kbps < 1) {
-        return "1kbps";
-    } else if (rate_kbps < 50) {
-        return "50kbps";
-    } else if (rate_kbps < 2500) {
-        return "2500kbps";
-    } else {
-        return "10000kbps";
-    }
+  if (rate_kbps < 1) {
+    return "1kbps";
+  } else if (rate_kbps < 50) {
+    return "50kbps";
+  } else if (rate_kbps < 2500) {
+    return "2500kbps";
+  } else {
+    return "10000kbps";
+  }
 }
 
 const char *addr_family_name(int addr_family) {
-    if (addr_family == AF_INET) {
-        return "ipv4";
-    } else if (addr_family == AF_INET6) {
-        return "ipv6";
-    } else {
-        return "other";
-    }
+  if (addr_family == AF_INET) {
+    return "ipv4";
+  } else if (addr_family == AF_INET6) {
+    return "ipv6";
+  } else {
+    return "other";
+  }
 }
 
 /////////////////// MTU /////////////////////////////////////////

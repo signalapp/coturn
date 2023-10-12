@@ -142,8 +142,7 @@ void start_prometheus_server(void) {
       prom_counter_new("turn_total_traffic_peer_sentb", "Represents total finished sessions peer sent bytes", 0, NULL));
 
   // Create total completed session counter metric
-  const char *total_sessions_labels[] =
-          {"duration", "sent_rate" };
+  const char *total_sessions_labels[] = {"duration", "sent_rate"};
   turn_total_sessions = prom_collector_registry_must_register_metric(
       prom_counter_new("turn_total_sessions", "Represents total completed sessions", 2, total_sessions_labels));
 
@@ -156,20 +155,20 @@ void start_prometheus_server(void) {
   // Create round trip time pseudo-histogram metrics
   // values must be kept in sync with observation function below
 
-  turn_rtt_client[0] = prom_collector_registry_must_register_metric(
-      prom_counter_new("turn_rtt_client_le_25ms", "Represents measured round trip time of client with channel", 0, NULL));
-  turn_rtt_client[1] = prom_collector_registry_must_register_metric(
-      prom_counter_new("turn_rtt_client_le_50ms", "Represents measured round trip time of client with channel", 0, NULL));
-  turn_rtt_client[2] = prom_collector_registry_must_register_metric(
-      prom_counter_new("turn_rtt_client_le_100ms", "Represents measured round trip time of client with channel", 0, NULL));
-  turn_rtt_client[3] = prom_collector_registry_must_register_metric(
-      prom_counter_new("turn_rtt_client_le_200ms", "Represents measured round trip time of client with channel", 0, NULL));
-  turn_rtt_client[4] = prom_collector_registry_must_register_metric(
-      prom_counter_new("turn_rtt_client_le_400ms", "Represents measured round trip time of client with channel", 0, NULL));
-  turn_rtt_client[5] = prom_collector_registry_must_register_metric(
-      prom_counter_new("turn_rtt_client_le_800ms", "Represents measured round trip time of client with channel", 0, NULL));
-  turn_rtt_client[6] = prom_collector_registry_must_register_metric(
-      prom_counter_new("turn_rtt_client_le_1500ms", "Represents measured round trip time of client with channel", 0, NULL));
+  turn_rtt_client[0] = prom_collector_registry_must_register_metric(prom_counter_new(
+      "turn_rtt_client_le_25ms", "Represents measured round trip time of client with channel", 0, NULL));
+  turn_rtt_client[1] = prom_collector_registry_must_register_metric(prom_counter_new(
+      "turn_rtt_client_le_50ms", "Represents measured round trip time of client with channel", 0, NULL));
+  turn_rtt_client[2] = prom_collector_registry_must_register_metric(prom_counter_new(
+      "turn_rtt_client_le_100ms", "Represents measured round trip time of client with channel", 0, NULL));
+  turn_rtt_client[3] = prom_collector_registry_must_register_metric(prom_counter_new(
+      "turn_rtt_client_le_200ms", "Represents measured round trip time of client with channel", 0, NULL));
+  turn_rtt_client[4] = prom_collector_registry_must_register_metric(prom_counter_new(
+      "turn_rtt_client_le_400ms", "Represents measured round trip time of client with channel", 0, NULL));
+  turn_rtt_client[5] = prom_collector_registry_must_register_metric(prom_counter_new(
+      "turn_rtt_client_le_800ms", "Represents measured round trip time of client with channel", 0, NULL));
+  turn_rtt_client[6] = prom_collector_registry_must_register_metric(prom_counter_new(
+      "turn_rtt_client_le_1500ms", "Represents measured round trip time of client with channel", 0, NULL));
   turn_rtt_client[7] = prom_collector_registry_must_register_metric(
       prom_counter_new("turn_rtt_client_more", "Represents measured round trip time of client with channel", 0, NULL));
 
@@ -301,19 +300,16 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
 
 void prom_inc_allocation(SOCKET_TYPE type, int addr_family) {
   if (turn_params.prometheus == 1) {
-    const char *labels[] = {socket_type_name(type), addr_family_name(addr_family) };
+    const char *labels[] = {socket_type_name(type), addr_family_name(addr_family)};
     prom_gauge_inc(turn_total_allocations, labels);
   }
 }
 
-void prom_dec_allocation(SOCKET_TYPE type,
-                         int addr_family,
-                         unsigned long duration,
-                         unsigned long sent_rate_kbps) {
+void prom_dec_allocation(SOCKET_TYPE type, int addr_family, unsigned long duration, unsigned long sent_rate_kbps) {
   if (turn_params.prometheus == 1) {
-    const char *labels[] = {socket_type_name(type), addr_family_name(addr_family) };
+    const char *labels[] = {socket_type_name(type), addr_family_name(addr_family)};
     prom_gauge_dec(turn_total_allocations, labels);
-    const char *total_sessions_labels[] = { duration_name(duration), rate_name(sent_rate_kbps) };
+    const char *total_sessions_labels[] = {duration_name(duration), rate_name(sent_rate_kbps)};
     prom_counter_add(turn_total_sessions, 1, total_sessions_labels);
   }
 }

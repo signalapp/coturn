@@ -73,6 +73,8 @@ struct admin_server {
   struct bufferevent *https_out_buf;
   ur_map *sessions;
   pthread_t thr;
+  // Signal change to add rtt metrics
+  ioa_timer_handle rtt_ev;
 };
 
 ///////////////////////////////////////////
@@ -112,6 +114,10 @@ void https_admin_server_receive_message(struct bufferevent *bev, void *ptr);
 
 int send_turn_session_info(struct turn_session_info *tsi);
 void send_https_socket(ioa_socket_handle s);
+
+// Signal change to add rtt metrics
+int rtt_foreach(ur_map_key_type, ur_map_value_type);
+void admin_server_rtt_timer_handler(ioa_engine *, void *);
 
 ////////////////////////////////////////////
 
