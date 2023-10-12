@@ -288,6 +288,10 @@ void *allocate_super_memory_engine_func(ioa_engine_handle e, size_t size, const 
 
 /////////////////////////////////////////////////
 
+// Signal change to add rtt metrics
+int send_cycle_rtt_map_to_relay(turnserver_id id);
+size_t cycle_rtt_ms_maps(ur_map **rtt_ms_maps, size_t len);
+
 #ifdef __cplusplus
 }
 #endif
