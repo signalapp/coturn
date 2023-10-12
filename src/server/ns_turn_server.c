@@ -2884,7 +2884,8 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
 // Signal change to add rtt metrics
 /////////////// inspect relayed packets, they might be ICE binds ///////////////
 
-static void inspect_binds (ioa_net_data *in_buffer, turn_permission_info *tinfo, int from_peer, int is_channel) {
+static void inspect_binds(turn_turnserver *server, ioa_net_data *in_buffer, turn_permission_info *tinfo, int from_peer,
+                          int is_channel) {
   if (!in_buffer || !tinfo || !(from_peer == 0 || from_peer == 1)) {
     return;
   }
@@ -2909,7 +2910,6 @@ static void inspect_binds (ioa_net_data *in_buffer, turn_permission_info *tinfo,
         from_client = 1;
       }
 
-
       if (tinfo->pings[from_client].ts.tv_sec == 0) {
         return;
       }
@@ -2931,17 +2931,42 @@ static void inspect_binds (ioa_net_data *in_buffer, turn_permission_info *tinfo,
 
 #if !defined(TURN_NO_PROMETHEUS)
             if (is_channel) {
-                if (from_client) {
-                  prom_observe_rtt_client(diffus);
-                } else {
-                  prom_observe_rtt_peer(diffus);
-                }
-                if (tinfo->pings[from_peer].lastrttus > 0) {
-                  prom_observe_rtt_combined(diffus + tinfo->pings[from_peer].lastrttus );
-                }
+              if (from_client) {
+                prom_observe_rtt_client(diffus);
+              } else {
+                prom_observe_rtt_peer(diffus);
+              }
+              if (tinfo->pings[from_peer].lastrttus > 0) {
+                prom_observe_rtt_combined(diffus + tinfo->pings[from_peer].lastrttus);
+              }
             }
 #endif
+            ur_map_key_type key = 0;
+            // add one to value to differentiate from zero
+            ur_map_value_type diffms = diffus / 1000 + 1;
 
+            if (in_buffer->src_addr.ss.sa_family == AF_INET) {
+              key = ntohl(((struct sockaddr_in *)&in_buffer->src_addr)->sin_addr.s_addr);
+              key >>= 8; // keep only the top 24 bits
+            } else if (in_buffer->src_addr.ss.sa_family == AF_INET6) {
+              // use the high 6 bytes (48 bits)
+              for (int i = 0; i < 6; ++i) {
+                key <<= 8;
+                key |= ((struct sockaddr_in6 *)&in_buffer->src_addr)->sin6_addr.s6_addr[i];
+              }
+              key |= (1L << 63);
+            }
+
+            // explicitly copy map pointer in case of concurrent access
+            ur_map *map = server->rtt_ms_mins;
+
+            ur_map_lock(map);
+            ur_map_value_type value = 0;
+            ur_map_get(map, key, &value);
+            if (value == 0 || diffms < value) {
+              ur_map_put(map, key, diffms);
+            }
+            ur_map_unlock(map);
           }
         }
         // don't process retransmited responses
@@ -3034,7 +3059,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, in
           ioa_network_buffer_set_size(nbh, len);
         }
         // Signal change to add rtt metrics
-        inspect_binds(in_buffer, tinfo, 0, 0);
+        inspect_binds(server, in_buffer, tinfo, 0, 0);
 
         ioa_network_buffer_header_init(nbh);
         int skip = 0;
@@ -4095,8 +4120,9 @@ static int write_to_peerchannel(ts_ur_super_session *ss, uint16_t chnum, ioa_net
                                          ioa_network_buffer_get_size(in_buffer->nbh) - STUN_CHANNEL_HEADER_LENGTH);
 
       // Signal change to add rtt metrics
+      turn_turnserver *server = (turn_turnserver *)ss->server;
       turn_permission_info *tinfo = (turn_permission_info *)(chn->owner);
-      inspect_binds(in_buffer, tinfo, 0, 1);
+      inspect_binds(server, in_buffer, tinfo, 0, 1);
 
       ioa_network_buffer_header_init(nbh);
 
@@ -4792,7 +4818,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data
       if (tinfo) {
         chnum = get_turn_channel_number(tinfo, &(in_buffer->src_addr));
         // Signal change to add rtt metrics
-        inspect_binds(in_buffer, tinfo, 1, chnum != 0);
+        inspect_binds(server, in_buffer, tinfo, 1, chnum != 0);
       } else if (!(server->server_relay)) {
         return;
       }
@@ -4981,6 +5007,9 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
   server->response_origin_only_with_rfc5780 = response_origin_only_with_rfc5780;
 
   server->respond_http_unsupported = respond_http_unsupported;
+
+  // Signal change to add rtt metrics
+  server->rtt_ms_mins = ur_map_create();
 }
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {
