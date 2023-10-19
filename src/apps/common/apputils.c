@@ -1157,7 +1157,7 @@ char *find_config_file(const char *config_file, int print_file_name) {
           size_t celen = strlen(c_execdir);
           fnsz = sizeof(char) * (dirlen + cflen + celen + 10);
           fn = (char *)malloc(fnsz + 1);
-          strncpy(fn, c_execdir, fnsz);
+          strncpy(fn, c_execdir, celen);
           size_t fnlen = strlen(fn);
           if (fnlen < fnsz) {
             strncpy(fn + fnlen, "/", fnsz - fnlen);
