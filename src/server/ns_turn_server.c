@@ -2881,7 +2881,7 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
 // Signal change to add rtt metrics
 /////////////// inspect relayed packets, they might be ICE binds ///////////////
 
-static void inspect_binds (ioa_net_data *in_buffer, turn_permission_info *tinfo, int from_peer, int is_channel) {
+static void inspect_binds(ioa_net_data *in_buffer, turn_permission_info *tinfo, int from_peer, int is_channel) {
   if (!in_buffer || !tinfo || !(from_peer == 0 || from_peer == 1)) {
     return;
   }
@@ -2906,7 +2906,6 @@ static void inspect_binds (ioa_net_data *in_buffer, turn_permission_info *tinfo,
         from_client = 1;
       }
 
-
       if (tinfo->pings[from_client].ts.tv_sec == 0) {
         return;
       }
@@ -2928,17 +2927,16 @@ static void inspect_binds (ioa_net_data *in_buffer, turn_permission_info *tinfo,
 
 #if !defined(TURN_NO_PROMETHEUS)
             if (is_channel) {
-                if (from_client) {
-                  prom_observe_rtt_client(diffus);
-                } else {
-                  prom_observe_rtt_peer(diffus);
-                }
-                if (tinfo->pings[from_peer].lastrttus > 0) {
-                  prom_observe_rtt_combined(diffus + tinfo->pings[from_peer].lastrttus );
-                }
+              if (from_client) {
+                prom_observe_rtt_client(diffus);
+              } else {
+                prom_observe_rtt_peer(diffus);
+              }
+              if (tinfo->pings[from_peer].lastrttus > 0) {
+                prom_observe_rtt_combined(diffus + tinfo->pings[from_peer].lastrttus);
+              }
             }
 #endif
-
           }
         }
         // don't process retransmited responses
