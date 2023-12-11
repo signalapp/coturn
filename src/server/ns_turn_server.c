@@ -27,6 +27,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+// Signal change to add cpu pinning
+#define _GNU_SOURCE
+#include <sched.h>
 
 #include "ns_turn_server.h"
 
@@ -5021,6 +5024,14 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
 
   // Signal change to add rtt metrics
   server->rtt_ms_mins = ur_map_create();
+
+  // Signal change to add cpu pinning
+  cpu_set_t cpuset;
+  CPU_ZERO(&cpuset);
+  CPU_SET(id, &cpuset);
+  if (sched_setaffinity(0, sizeof(cpuset), &cpuset) == -1) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "turn server id=%d, could not set cpu affinity\n", (int) id);
+  }
 }
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {

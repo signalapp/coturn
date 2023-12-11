@@ -205,6 +205,8 @@ int handle_socket_error(void);
 
 int set_raw_socket_tos(evutil_socket_t fd, int family, int tos);
 int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl);
+// Signal change to add cpu pinning
+int set_raw_socket_incoming_cpu(evutil_socket_t fd, int cpu);
 int get_raw_socket_tos(evutil_socket_t fd, int family);
 int get_raw_socket_ttl(evutil_socket_t fd, int family);
 

@@ -768,6 +768,9 @@ static int create_server_socket(dtls_listener_relay_server_type *server, int rep
     set_raw_socket_ttl_options(udp_listen_fd, server->addr.ss.sa_family);
     set_raw_socket_tos_options(udp_listen_fd, server->addr.ss.sa_family);
 
+    // Signal change to add cpu pinning
+    set_raw_socket_incoming_cpu(udp_listen_fd, server->ts->id);
+
     {
       const int max_binding_time = 60;
       int addr_bind_cycle = 0;

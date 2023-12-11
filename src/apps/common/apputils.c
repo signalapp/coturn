@@ -468,6 +468,12 @@ int set_raw_socket_tos(evutil_socket_t fd, int family, int tos) {
   return 0;
 }
 
+// Signal change to add cpu pinning
+
+int set_raw_socket_incoming_cpu(evutil_socket_t fd, int cpu) {
+  return setsockopt(fd, SOL_SOCKET, SO_INCOMING_CPU, &cpu, sizeof(cpu));
+}
+
 int is_stream_socket(int st) {
   switch (st) {
   case TCP_SOCKET:
