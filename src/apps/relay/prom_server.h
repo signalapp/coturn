@@ -53,10 +53,11 @@ extern prom_counter_t *turn_total_traffic_peer_sentb;
 
 extern prom_gauge_t *turn_total_allocations_number;
 
-// Signal change to add rtt metrics
+// Signal change to add metrics
 extern prom_counter_t *turn_rtt_client[8];
 extern prom_counter_t *turn_rtt_peer[8];
 extern prom_counter_t *turn_rtt_combined[8];
+extern prom_counter_t *turn_with_no_ping_rcvp;
 
 #define TURN_ALLOC_STR_MAX_SIZE (20)
 
@@ -78,11 +79,12 @@ void prom_inc_stun_binding_request(void);
 void prom_inc_stun_binding_response(void);
 void prom_inc_stun_binding_error(void);
 
-// Signal change to add rtt metrics
+// Signal change to add metrics
 void prom_observe_rtt(prom_counter_t *counter[8], int microseconds);
 void prom_observe_rtt_client(int microseconds);
 void prom_observe_rtt_peer(int microseconds);
 void prom_observe_rtt_combined(int microseconds);
+void prom_inc_turn_with_no_ping_rcvp(void);
 
 #else
 

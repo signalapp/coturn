@@ -2881,7 +2881,7 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
   return 0;
 }
 
-// Signal change to add rtt metrics
+// Signal change to add metrics
 /////////////// inspect relayed packets, they might be ICE binds ///////////////
 
 static void inspect_binds(turn_turnserver *server, ioa_net_data *in_buffer, turn_permission_info *tinfo, int from_peer,
@@ -2973,6 +2973,12 @@ static void inspect_binds(turn_turnserver *server, ioa_net_data *in_buffer, turn
         tinfo->pings[from_client].ts.tv_sec = 0;
       }
     }
+  } else {
+#if !defined(TURN_NO_PROMETHEUS)
+    if (tinfo->pings[0].lastrttus == 0 && tinfo->pings[1].lastrttus == 0) {
+      prom_inc_turn_with_no_ping_rcvp();
+    }
+#endif
   }
 }
 

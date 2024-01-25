@@ -37,10 +37,11 @@ prom_counter_t *turn_total_sessions;
 
 prom_gauge_t *turn_total_allocations;
 
-// Signal change to add rtt metrics
+// Signal change to add metrics
 prom_counter_t *turn_rtt_client[8];
 prom_counter_t *turn_rtt_peer[8];
 prom_counter_t *turn_rtt_combined[8];
+prom_counter_t *turn_with_no_ping_rcvp;
 
 void start_prometheus_server(void) {
   if (turn_params.prometheus == 0) {
@@ -115,7 +116,7 @@ void start_prometheus_server(void) {
   turn_total_allocations = prom_collector_registry_must_register_metric(
       prom_gauge_new("turn_total_allocations", "Represents current allocations number", 2, total_allocations_labels));
 
-  // Signal change to add rtt metrics
+  // Signal change to add metrics
   // Create round trip time pseudo-histogram metrics
   // values must be kept in sync with observation function below
 
@@ -169,6 +170,9 @@ void start_prometheus_server(void) {
       prom_counter_new("turn_rtt_combined_le_1500ms", "Represents combined round trip time of channel", 0, NULL));
   turn_rtt_combined[7] = prom_collector_registry_must_register_metric(
       prom_counter_new("turn_rtt_combined_more", "Represents combined round trip time of channel", 0, NULL));
+
+  turn_with_no_ping_rcvp = prom_collector_registry_must_register_metric(prom_counter_new(
+      "turn_with_no_ping_rcvp", "Count of packets received for TURN where no ICE ping has been observed", 0, NULL));
 
   promhttp_set_active_collector_registry(NULL);
 
@@ -288,7 +292,7 @@ int is_ipv6_enabled(void) {
   return ret;
 }
 
-// Signal change to add rtt metrics
+// Signal change to add metrics
 void prom_observe_rtt(prom_counter_t *counter[8], int microseconds) {
   if (microseconds <= 25000) {
     prom_counter_add(counter[0], 1, NULL);
@@ -329,6 +333,12 @@ void prom_observe_rtt_peer(int microseconds) {
 void prom_observe_rtt_combined(int microseconds) {
   if (turn_params.prometheus == 1) {
     prom_observe_rtt(turn_rtt_combined, microseconds);
+  }
+}
+
+void prom_inc_turn_with_no_ping_rcvp(void) {
+  if (turn_params.prometheus == 1) {
+    prom_counter_add(turn_with_no_ping_rcvp, 1, NULL);
   }
 }
 
