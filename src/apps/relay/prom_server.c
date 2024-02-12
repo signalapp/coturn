@@ -209,8 +209,9 @@ void start_prometheus_server(void) {
   return;
 }
 
+// Signal change to add metrics
 void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
-                               unsigned long sentp, unsigned long sentb, bool peer) {
+                               unsigned long sentp, unsigned long sentb, unsigned long without_pingp, bool peer) {
   if (turn_params.prometheus == 1) {
 
     const char *label[] = {realm, NULL};
@@ -238,6 +239,10 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
       prom_counter_add(turn_total_traffic_rcvb, rsvb, NULL);
       prom_counter_add(turn_total_traffic_sentp, sentp, NULL);
       prom_counter_add(turn_total_traffic_sentb, sentb, NULL);
+    }
+    // Signal change to add metrics
+    if (without_pingp) {
+      prom_counter_add(turn_with_no_ping_rcvp, without_pingp, NULL);
     }
   }
 }
@@ -336,12 +341,6 @@ void prom_observe_rtt_combined(int microseconds) {
   }
 }
 
-void prom_inc_turn_with_no_ping_rcvp(void) {
-  if (turn_params.prometheus == 1) {
-    prom_counter_add(turn_with_no_ping_rcvp, 1, NULL);
-  }
-}
-
 #else
 
 void start_prometheus_server(void) {
@@ -350,13 +349,14 @@ void start_prometheus_server(void) {
 }
 
 void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
-                               unsigned long sentp, unsigned long sentb, bool peer) {
+                               unsigned long sentp, unsigned long sentb, unsigned long without_pingp, bool peer) {
   UNUSED_ARG(realm);
   UNUSED_ARG(user);
   UNUSED_ARG(rsvp);
   UNUSED_ARG(rsvb);
   UNUSED_ARG(sentp);
   UNUSED_ARG(sentb);
+  UNUSED_ARG(without_pingp);
   UNUSED_ARG(peer);
 }
 

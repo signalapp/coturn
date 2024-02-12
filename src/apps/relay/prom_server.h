@@ -67,8 +67,9 @@ extern "C" {
 
 void start_prometheus_server(void);
 
+// Signal change to add metrics
 void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
-                               unsigned long sentp, unsigned long sentb, bool peer);
+                               unsigned long sentp, unsigned long sentb, unsigned long without_pingp, bool peer);
 
 void prom_inc_allocation(SOCKET_TYPE type, int addr_family);
 void prom_dec_allocation(SOCKET_TYPE type, int addr_family, unsigned long duration, unsigned long sent_rate_kbps);
@@ -84,14 +85,14 @@ void prom_observe_rtt(prom_counter_t *counter[8], int microseconds);
 void prom_observe_rtt_client(int microseconds);
 void prom_observe_rtt_peer(int microseconds);
 void prom_observe_rtt_combined(int microseconds);
-void prom_inc_turn_with_no_ping_rcvp(void);
 
 #else
 
 void start_prometheus_server(void);
 
+// Signal change to add metrics
 void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
-                               unsigned long sentp, unsigned long sentb, bool peer);
+                               unsigned long sentp, unsigned long sentb, unsigned long without_pingp, bool peer);
 
 void prom_inc_allocation(SOCKET_TYPE type);
 void prom_dec_allocation(SOCKET_TYPE type);
