@@ -119,6 +119,8 @@ struct _ts_ur_super_session {
   char s_mobile_id[33];
   /* Bandwidth */
   band_limit_t bps;
+  // Signal change to add metrics
+  uint64_t t_before_ping_packets;
 };
 
 ////// Session info for statistics //////

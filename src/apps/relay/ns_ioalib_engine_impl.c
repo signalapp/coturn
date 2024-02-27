@@ -3720,25 +3720,28 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type, int family)
         }
 #endif
         {
+          // Signal change to add metrics
           if (ss->realm_options.name[0]) {
 
             // Set prometheus traffic metrics
             prom_set_finished_traffic(ss->realm_options.name, (const char *)ss->username,
                                       (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes),
-                                      (unsigned long)(ss->t_sent_packets), (unsigned long)(ss->t_sent_bytes), false);
+                                      (unsigned long)(ss->t_sent_packets), (unsigned long)(ss->t_sent_bytes),
+                                      (unsigned long)ss->t_before_ping_packets, false);
             prom_set_finished_traffic(
                 ss->realm_options.name, (const char *)ss->username, (unsigned long)(ss->t_peer_received_packets),
                 (unsigned long)(ss->t_peer_received_bytes), (unsigned long)(ss->t_peer_sent_packets),
-                (unsigned long)(ss->t_peer_sent_bytes), true);
+                (unsigned long)(ss->t_peer_sent_bytes), 0, true);
           } else {
             // Set prometheus traffic metrics
             prom_set_finished_traffic(NULL, (const char *)ss->username, (unsigned long)(ss->t_received_packets),
                                       (unsigned long)(ss->t_received_bytes), (unsigned long)(ss->t_sent_packets),
-                                      (unsigned long)(ss->t_sent_bytes), false);
+                                      (unsigned long)(ss->t_sent_bytes), (unsigned long)ss->t_before_ping_packets,
+                                      false);
             prom_set_finished_traffic(NULL, (const char *)ss->username, (unsigned long)(ss->t_peer_received_packets),
                                       (unsigned long)(ss->t_peer_received_bytes),
                                       (unsigned long)(ss->t_peer_sent_packets), (unsigned long)(ss->t_peer_sent_bytes),
-                                      true);
+                                      0, true);
           }
           turn_time_t ct = get_turn_server_time(server) - ss->start_time;
           const uint32_t byte_to_kilobit = 125;
