@@ -2881,13 +2881,13 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
   return 0;
 }
 
-// Signal change to add rtt metrics
+// Signal change to add metrics
 /////////////// inspect relayed packets, they might be ICE binds ///////////////
 
-static void inspect_binds(turn_turnserver *server, ioa_net_data *in_buffer, turn_permission_info *tinfo, int from_peer,
-                          int is_channel) {
+static int inspect_binds(turn_turnserver *server, ioa_net_data *in_buffer, turn_permission_info *tinfo, int from_peer,
+                         int is_channel) {
   if (!in_buffer || !tinfo || !(from_peer == 0 || from_peer == 1)) {
-    return;
+    return 0;
   }
   size_t len = ioa_network_buffer_get_size(in_buffer->nbh);
   uint8_t *buf = ioa_network_buffer_data(in_buffer->nbh);
@@ -2911,7 +2911,7 @@ static void inspect_binds(turn_turnserver *server, ioa_net_data *in_buffer, turn
       }
 
       if (tinfo->pings[from_client].ts.tv_sec == 0) {
-        return;
+        return 0;
       }
 
       stun_tid tid;
@@ -2973,7 +2973,12 @@ static void inspect_binds(turn_turnserver *server, ioa_net_data *in_buffer, turn
         tinfo->pings[from_client].ts.tv_sec = 0;
       }
     }
+  } else {
+    if (tinfo->pings[0].lastrttus == 0 && tinfo->pings[1].lastrttus == 0) {
+      return 1;
+    }
   }
+  return 0;
 }
 
 static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, int *err_code, const uint8_t **reason,
@@ -3059,7 +3064,9 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, in
           ioa_network_buffer_set_size(nbh, len);
         }
         // Signal change to add rtt metrics
-        inspect_binds(server, in_buffer, tinfo, 0, 0);
+        if (inspect_binds(server, in_buffer, tinfo, 0, 0)) {
+          ++(ss->t_before_ping_packets);
+        }
 
         ioa_network_buffer_header_init(nbh);
         int skip = 0;
@@ -4122,7 +4129,9 @@ static int write_to_peerchannel(ts_ur_super_session *ss, uint16_t chnum, ioa_net
       // Signal change to add rtt metrics
       turn_turnserver *server = (turn_turnserver *)ss->server;
       turn_permission_info *tinfo = (turn_permission_info *)(chn->owner);
-      inspect_binds(server, in_buffer, tinfo, 0, 1);
+      if (inspect_binds(server, in_buffer, tinfo, 0, 1)) {
+        ++(ss->t_before_ping_packets);
+      }
 
       ioa_network_buffer_header_init(nbh);
 
@@ -4818,7 +4827,9 @@ static void peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data
       if (tinfo) {
         chnum = get_turn_channel_number(tinfo, &(in_buffer->src_addr));
         // Signal change to add rtt metrics
-        inspect_binds(server, in_buffer, tinfo, 1, chnum != 0);
+        if (inspect_binds(server, in_buffer, tinfo, 1, chnum != 0)) {
+          ++(ss->t_before_ping_packets);
+        }
       } else if (!(server->server_relay)) {
         return;
       }
