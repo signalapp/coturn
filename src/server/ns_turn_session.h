@@ -119,6 +119,8 @@ struct _ts_ur_super_session {
   char s_mobile_id[33];
   /* Bandwidth */
   band_limit_t bps;
+  /* Signal change to add groups metric label */
+  uint8_t usergroup[MAX_USERGROUP_SIZE + 1];
 };
 
 ////// Session info for statistics //////

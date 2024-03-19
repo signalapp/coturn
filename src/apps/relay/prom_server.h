@@ -79,9 +79,9 @@ void prom_inc_stun_binding_error(void);
 
 // Signal change to add rtt metrics
 void prom_observe_rtt(prom_counter_t *counter[8], int microseconds);
-void prom_observe_rtt_client(int microseconds);
-void prom_observe_rtt_peer(int microseconds);
-void prom_observe_rtt_combined(int microseconds);
+void prom_observe_rtt_client(int microseconds, char *username);
+void prom_observe_rtt_peer(int microseconds, char *username);
+void prom_observe_rtt_combined(int microseconds, char *username);
 
 #else
 
