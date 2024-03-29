@@ -462,6 +462,7 @@ static TURN_MUTEX_DECLARE(auth_message_counter_mutex);
 static authserver_id auth_message_counter = 1;
 
 void send_auth_message_to_auth_server(struct auth_message *am) {
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "in send_auth_message_to_auth_server");
   TURN_MUTEX_LOCK(&auth_message_counter_mutex);
   if (auth_message_counter >= authserver_number)
     auth_message_counter = 1;
@@ -1614,6 +1615,7 @@ static void run_events(struct event_base *eb, ioa_engine_handle e) {
 
 void run_listener_server(struct listener_server *ls) {
   unsigned int cycle = 0;
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "starting a listener server");
   while (!turn_params.stop_turn_server) {
 
 #if !defined(TURN_NO_SYSTEMD)
@@ -1626,6 +1628,9 @@ void run_listener_server(struct listener_server *ls) {
       }
     }
 
+
+
+    // TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "the ioa eng is null: %d\n", ls->ioa_eng == NULL);
     run_events(ls->event_base, ls->ioa_eng);
 
     rollover_logfile();
@@ -1717,8 +1722,9 @@ static void *run_general_relay_thread(void *arg) {
 
 static void setup_general_relay_servers(void) {
   size_t i = 0;
-
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Setting up general relay_servers\n");
   for (i = 0; i < get_real_general_relay_servers_number(); i++) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Setting up general relay_servers %d\n", i);
 
     if (turn_params.general_relay_servers_number == 0) {
       general_relay_servers[i] = (struct relay_server *)allocate_super_memory_engine(turn_params.listener.ioa_eng,

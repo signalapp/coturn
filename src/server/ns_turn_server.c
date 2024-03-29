@@ -162,6 +162,7 @@ turn_time_t get_turn_server_time(turn_turnserver *server) {
 /////////////////// quota //////////////////////
 
 static int inc_quota(ts_ur_super_session *ss, uint8_t *username) {
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "inside inc_quota, where we set usergroup"\n);
   if (ss && !(ss->quota_used) && ss->server && ((turn_turnserver *)ss->server)->chquotacb && username) {
 
     if (((turn_turnserver *)ss->server)->ct == TURN_CREDENTIALS_LONG_TERM) {
@@ -782,6 +783,7 @@ static ts_ur_super_session *create_new_ss(turn_turnserver *server) {
   //
   // printf("%s: 111.111: session size=%lu\n",__FUNCTION__,(unsigned long)sizeof(ts_ur_super_session));
   //
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\n");
   ts_ur_super_session *ss = (ts_ur_super_session *)calloc(sizeof(ts_ur_super_session), 1);
   ss->server = server;
   get_default_realm_options(&(ss->realm_options));
@@ -3325,6 +3327,7 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
                            int *err_code, const uint8_t **reason, ioa_net_data *in_buffer,
                            ioa_network_buffer_handle nbh, uint16_t method, int *message_integrity, int *postpone_reply,
                            int can_resume) {
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "insude check_stun_auth, where we set usergroup"\n);
   uint8_t usname[STUN_MAX_USERNAME_SIZE + 1];
   uint8_t nonce[STUN_MAX_NONCE_SIZE + 1];
   uint8_t realm[STUN_MAX_REALM_SIZE + 1];

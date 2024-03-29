@@ -3586,6 +3586,8 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type, int family)
   if (a) {
     ts_ur_super_session *ss = (ts_ur_super_session *)(((allocation *)a)->owner);
     if (ss) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "======Attempting to print usergroup\n");
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "======usergroup %s\n", (char *) ss->usergroup);
       turn_turnserver *server = (turn_turnserver *)ss->server;
       if (server) {
         ioa_engine_handle e = turn_server_get_engine(server);
