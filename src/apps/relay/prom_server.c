@@ -116,15 +116,16 @@ void start_prometheus_server(void) {
   turn_total_traffic_peer_sentb = prom_collector_registry_must_register_metric(
       prom_counter_new("turn_total_traffic_peer_sentb", "Represents total finished sessions peer sent bytes", ntraffic_labels, traffic_label));
 
+  // Signal change to add protocol-group metric label
   // Create total completed session counter metric
-  const char *total_sessions_labels[] = {"duration", "sent_rate"};
+  const char *total_sessions_labels[] = {"duration", "sent_rate", PROTOCOL_GROUP_LABEL};
   turn_total_sessions = prom_collector_registry_must_register_metric(
-      prom_counter_new("turn_total_sessions", "Represents total completed sessions", 2, total_sessions_labels));
+      prom_counter_new("turn_total_sessions", "Represents total completed sessions", 3, total_sessions_labels));
 
   // Create total allocations number gauge metric
-  const char *total_allocations_labels[] = {"type", "client_addr_family"};
+  const char *total_allocations_labels[] = {"type", "client_addr_family", PROTOCOL_GROUP_LABEL};
   turn_total_allocations = prom_collector_registry_must_register_metric(
-      prom_gauge_new("turn_total_allocations", "Represents current allocations number", 2, total_allocations_labels));
+      prom_gauge_new("turn_total_allocations", "Represents current allocations number", 3, total_allocations_labels));
 
   // Signal change to add metrics
   // Create round trip time pseudo-histogram metrics
@@ -262,18 +263,18 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
   }
 }
 
-void prom_inc_allocation(SOCKET_TYPE type, int addr_family) {
+void prom_inc_allocation(SOCKET_TYPE type, int addr_family, const char *protocolgroup) {
   if (turn_params.prometheus == 1) {
-    const char *labels[] = {socket_type_name(type), addr_family_name(addr_family)};
+    const char *labels[] = {socket_type_name(type), addr_family_name(addr_family), protocolgroup};
     prom_gauge_inc(turn_total_allocations, labels);
   }
 }
 
-void prom_dec_allocation(SOCKET_TYPE type, int addr_family, unsigned long duration, unsigned long sent_rate_kbps) {
+void prom_dec_allocation(SOCKET_TYPE type, int addr_family, unsigned long duration, unsigned long sent_rate_kbps, const char *protocolgroup) {
   if (turn_params.prometheus == 1) {
-    const char *labels[] = {socket_type_name(type), addr_family_name(addr_family)};
+    const char *labels[] = {socket_type_name(type), addr_family_name(addr_family), protocolgroup};
     prom_gauge_dec(turn_total_allocations, labels);
-    const char *total_sessions_labels[] = {duration_name(duration), rate_name(sent_rate_kbps)};
+    const char *total_sessions_labels[] = {duration_name(duration), rate_name(sent_rate_kbps), protocolgroup};
     prom_counter_add(turn_total_sessions, 1, total_sessions_labels);
   }
 }
