@@ -69,11 +69,13 @@ void start_prometheus_server(void);
 
 // Signal change to add metrics
 void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
-                               unsigned long sentp, unsigned long sentb, unsigned long without_pingp, bool peer, const char *protocolgroup);
+                               unsigned long sentp, unsigned long sentb, unsigned long without_pingp, bool peer,
+                               const char *protocolgroup);
 
 void prom_inc_allocation(SOCKET_TYPE type, int addr_family, const char *protocolgroup);
 // Signal change to add protocol-group label
-void prom_dec_allocation(SOCKET_TYPE type, int addr_family, unsigned long duration, unsigned long sent_rate_kbps, const char *protocolgroup);
+void prom_dec_allocation(SOCKET_TYPE type, int addr_family, unsigned long duration, unsigned long sent_rate_kbps,
+                         const char *protocolgroup);
 
 int is_ipv6_enabled(void);
 
@@ -93,7 +95,8 @@ void start_prometheus_server(void);
 
 // Signal change to add metrics
 void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
-                               unsigned long sentp, unsigned long sentb, unsigned long without_pingp, bool peer, const char *protocolgroup);
+                               unsigned long sentp, unsigned long sentb, unsigned long without_pingp, bool peer,
+                               const char *protocolgroup);
 
 void prom_inc_allocation(SOCKET_TYPE type);
 void prom_dec_allocation(SOCKET_TYPE type);

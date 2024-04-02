@@ -2897,8 +2897,8 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
 // Signal change to add metrics
 /////////////// inspect relayed packets, they might be ICE binds ///////////////
 
-static int inspect_binds(ts_ur_super_session *ss, turn_turnserver *server, ioa_net_data *in_buffer, turn_permission_info *tinfo, int from_peer,
-                         int is_channel) {
+static int inspect_binds(ts_ur_super_session *ss, turn_turnserver *server, ioa_net_data *in_buffer,
+                         turn_permission_info *tinfo, int from_peer, int is_channel) {
   if (!in_buffer || !tinfo || !(from_peer == 0 || from_peer == 1)) {
     return 0;
   }
