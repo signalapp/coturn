@@ -122,7 +122,7 @@ struct _ts_ur_super_session {
   // Signal change to add metrics
   uint64_t t_before_ping_packets;
   // Signal change to add protocol-group label to metrics
-  uint8_t protocolgroup[MAX_PROTOCOL_GROUP_SIZE + 1];
+  char protocolgroup[MAX_PROTOCOL_GROUP_SIZE + 1];
 };
 
 ////// Session info for statistics //////

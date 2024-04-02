@@ -224,7 +224,7 @@ void start_prometheus_server(void) {
 
 // Signal change to add metrics
 void prom_set_finished_traffic(const char *realm, const char *user, unsigned long rsvp, unsigned long rsvb,
-                               unsigned long sentp, unsigned long sentb, unsigned long without_pingp, bool peer, const char* protocolgroup) {
+                               unsigned long sentp, unsigned long sentb, unsigned long without_pingp, bool peer, const char *protocolgroup) {
   if (turn_params.prometheus == 1) {
 
     // Signal change to add protocol-group label to metrics
@@ -314,7 +314,7 @@ int is_ipv6_enabled(void) {
 }
 
 // Signal change to add rtt metrics
-void prom_observe_rtt(prom_counter_t *counter[8], int microseconds, const char* protocolgroup) {
+void prom_observe_rtt(prom_counter_t *counter[8], int microseconds, const char *protocolgroup) {
   const char *label[] = { protocolgroup };
   if (microseconds <= 25000) {
     prom_counter_add(counter[0], 1, label);

@@ -354,11 +354,11 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
 allocation *get_allocation_ss(ts_ur_super_session *ss) { return &(ss->alloc); }
 
 void set_protocolgroup(ts_ur_super_session *ss) {
-  char *group = strrchr((char *) ss->username, '#');
+  char *group = strrchr((char *)ss->username, '#');
   if (group != NULL) {
-    strncpy((char *) ss->protocolgroup, group, MAX_PROTOCOL_GROUP_SIZE);
+    strncpy(ss->protocolgroup, group, MAX_PROTOCOL_GROUP_SIZE);
   } else {
-    strncpy((char *) ss->protocolgroup, DEFAULT_PROTOCOL_GROUP, MAX_PROTOCOL_GROUP_SIZE);
+    strncpy(ss->protocolgroup, DEFAULT_PROTOCOL_GROUP, MAX_PROTOCOL_GROUP_SIZE);
   }
 }
 
@@ -2945,12 +2945,12 @@ static int inspect_binds(ts_ur_super_session *ss, turn_turnserver *server, ioa_n
 #if !defined(TURN_NO_PROMETHEUS)
             if (is_channel) {
               if (from_client) {
-                prom_observe_rtt_client(diffus, (const char *) ss->protocolgroup);
+                prom_observe_rtt_client(diffus, ss->protocolgroup);
               } else {
-                prom_observe_rtt_peer(diffus, (const char *) ss->protocolgroup);
+                prom_observe_rtt_peer(diffus, ss->protocolgroup);
               }
               if (tinfo->pings[from_peer].lastrttus > 0) {
-                prom_observe_rtt_combined(diffus + tinfo->pings[from_peer].lastrttus, (const char *) ss->protocolgroup);
+                prom_observe_rtt_combined(diffus + tinfo->pings[from_peer].lastrttus, ss->protocolgroup);
               }
             }
 #endif
