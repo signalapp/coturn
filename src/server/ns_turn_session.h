@@ -121,6 +121,8 @@ struct _ts_ur_super_session {
   band_limit_t bps;
   // Signal change to add metrics
   uint64_t t_before_ping_packets;
+  // Signal change to add protocol-group label to metrics
+  char protocolgroup[MAX_PROTOCOL_GROUP_SIZE + 1];
 };
 
 ////// Session info for statistics //////
@@ -185,6 +187,9 @@ int turn_session_info_copy_from(struct turn_session_info *tsi, ts_ur_super_sessi
 ////////////// ss /////////////////////
 
 allocation *get_allocation_ss(ts_ur_super_session *ss);
+
+// Signal change to add protocol-group label to metrics
+void set_protocolgroup(ts_ur_super_session *ss);
 
 ///////////////////////////////////////////////////////
 

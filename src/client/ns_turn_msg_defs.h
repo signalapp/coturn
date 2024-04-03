@@ -48,6 +48,9 @@
 #define STUN_MAX_SERVER_NAME_SIZE (1025)
 #define STUN_MAX_PWD_SIZE (256)
 #define AUTH_SECRET_SIZE STUN_MAX_PWD_SIZE
+// Signal change to add group metric label
+#define MAX_PROTOCOL_GROUP_SIZE (16)
+#define DEFAULT_PROTOCOL_GROUP "00"
 
 #define STUN_MAGIC_COOKIE (0x2112A442)
 
