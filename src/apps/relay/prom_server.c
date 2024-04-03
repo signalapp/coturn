@@ -53,17 +53,13 @@ void start_prometheus_server(void) {
   prom_collector_registry_default_init();
 
   // Signal change to add protocol-group label to metrics
-  const char *label[] = {"realm", NULL, NULL};
-  size_t nlabels = 1;
+  const char *label[] = {"realm", PROTOCOL_GROUP_LABEL, PROTOCOL_GROUP_LABEL};
+  size_t nlabels = 2;
 
   if (turn_params.prometheus_username_labels) {
     label[1] = "user";
     nlabels++;
   }
-
-  // Signal change to add protocol-group label to metrics
-  label[nlabels] = PROTOCOL_GROUP_LABEL;
-  nlabels++;
 
   // Create STUN counters
   stun_binding_request = prom_collector_registry_must_register_metric(
