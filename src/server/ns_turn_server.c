@@ -177,6 +177,8 @@ static int inc_quota(ts_ur_super_session *ss, uint8_t *username) {
     } else {
 
       STRCPY(ss->username, username);
+      // Signal change to add protocol-group label to metrics
+      set_protocolgroup(ss);
 
       ss->quota_used = 1;
     }
@@ -350,6 +352,15 @@ static int good_peer_addr(turn_turnserver *server, const char *realm, ioa_addr *
 /////////////////// Allocation //////////////////////////////////
 
 allocation *get_allocation_ss(ts_ur_super_session *ss) { return &(ss->alloc); }
+
+void set_protocolgroup(ts_ur_super_session *ss) {
+  char *group = strrchr((char *)ss->username, '#');
+  if (group != NULL) {
+    strncpy(ss->protocolgroup, group, MAX_PROTOCOL_GROUP_SIZE);
+  } else {
+    strncpy(ss->protocolgroup, DEFAULT_PROTOCOL_GROUP, MAX_PROTOCOL_GROUP_SIZE);
+  }
+}
 
 static inline relay_endpoint_session *get_relay_session_ss(ts_ur_super_session *ss, int family) {
   return get_relay_session(&(ss->alloc), family);
@@ -1442,6 +1453,8 @@ static void copy_auth_parameters(ts_ur_super_session *orig_ss, ts_ur_super_sessi
     ss->nonce_expiration_time = orig_ss->nonce_expiration_time;
     memcpy(&(ss->realm_options), &(orig_ss->realm_options), sizeof(ss->realm_options));
     memcpy(ss->username, orig_ss->username, sizeof(ss->username));
+    // Signal change to add protocol-group label to metrics
+    memcpy(ss->protocolgroup, orig_ss->protocolgroup, sizeof(ss->protocolgroup));
     ss->hmackey_set = orig_ss->hmackey_set;
     memcpy(ss->hmackey, orig_ss->hmackey, sizeof(ss->hmackey));
     ss->oauth = orig_ss->oauth;
@@ -2884,8 +2897,8 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
 // Signal change to add metrics
 /////////////// inspect relayed packets, they might be ICE binds ///////////////
 
-static int inspect_binds(turn_turnserver *server, ioa_net_data *in_buffer, turn_permission_info *tinfo, int from_peer,
-                         int is_channel) {
+static int inspect_binds(ts_ur_super_session *ss, turn_turnserver *server, ioa_net_data *in_buffer,
+                         turn_permission_info *tinfo, int from_peer, int is_channel) {
   if (!in_buffer || !tinfo || !(from_peer == 0 || from_peer == 1)) {
     return 0;
   }
@@ -2932,12 +2945,12 @@ static int inspect_binds(turn_turnserver *server, ioa_net_data *in_buffer, turn_
 #if !defined(TURN_NO_PROMETHEUS)
             if (is_channel) {
               if (from_client) {
-                prom_observe_rtt_client(diffus);
+                prom_observe_rtt_client(diffus, ss->protocolgroup);
               } else {
-                prom_observe_rtt_peer(diffus);
+                prom_observe_rtt_peer(diffus, ss->protocolgroup);
               }
               if (tinfo->pings[from_peer].lastrttus > 0) {
-                prom_observe_rtt_combined(diffus + tinfo->pings[from_peer].lastrttus);
+                prom_observe_rtt_combined(diffus + tinfo->pings[from_peer].lastrttus, ss->protocolgroup);
               }
             }
 #endif
@@ -3064,7 +3077,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss, in
           ioa_network_buffer_set_size(nbh, len);
         }
         // Signal change to add rtt metrics
-        if (inspect_binds(server, in_buffer, tinfo, 0, 0)) {
+        if (inspect_binds(ss, server, in_buffer, tinfo, 0, 0)) {
           ++(ss->t_before_ping_packets);
         }
 
@@ -3451,6 +3464,8 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
       if (ss->oauth) {
         ss->hmackey_set = 0;
         STRCPY(ss->username, usname);
+        // Signal change to add protocol-group label to metrics
+        set_protocolgroup(ss);
       } else {
         if (method == STUN_METHOD_ALLOCATE) {
           *err_code = 437;
@@ -3463,6 +3478,8 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
     }
   } else {
     STRCPY(ss->username, usname);
+    // Signal change to add protocol-group label to metrics
+    set_protocolgroup(ss);
   }
 
   {
@@ -4129,7 +4146,7 @@ static int write_to_peerchannel(ts_ur_super_session *ss, uint16_t chnum, ioa_net
       // Signal change to add rtt metrics
       turn_turnserver *server = (turn_turnserver *)ss->server;
       turn_permission_info *tinfo = (turn_permission_info *)(chn->owner);
-      if (inspect_binds(server, in_buffer, tinfo, 0, 1)) {
+      if (inspect_binds(ss, server, in_buffer, tinfo, 0, 1)) {
         ++(ss->t_before_ping_packets);
       }
 
@@ -4827,7 +4844,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data
       if (tinfo) {
         chnum = get_turn_channel_number(tinfo, &(in_buffer->src_addr));
         // Signal change to add rtt metrics
-        if (inspect_binds(server, in_buffer, tinfo, 1, chnum != 0)) {
+        if (inspect_binds(ss, server, in_buffer, tinfo, 1, chnum != 0)) {
           ++(ss->t_before_ping_packets);
         }
       } else if (!(server->server_relay)) {

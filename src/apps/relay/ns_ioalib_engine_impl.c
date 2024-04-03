@@ -3575,7 +3575,7 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh) {
         {
           if (!refresh)
             prom_inc_allocation(get_ioa_socket_type(ss->client_socket),
-                                get_ioa_socket_address_family(ss->client_socket));
+                                get_ioa_socket_address_family(ss->client_socket), ss->protocolgroup);
         }
       }
     }
@@ -3638,26 +3638,26 @@ void turn_report_allocation_delete(void *a, SOCKET_TYPE socket_type, int family)
             prom_set_finished_traffic(ss->realm_options.name, (const char *)ss->username,
                                       (unsigned long)(ss->t_received_packets), (unsigned long)(ss->t_received_bytes),
                                       (unsigned long)(ss->t_sent_packets), (unsigned long)(ss->t_sent_bytes),
-                                      (unsigned long)ss->t_before_ping_packets, false);
+                                      (unsigned long)ss->t_before_ping_packets, false, ss->protocolgroup);
             prom_set_finished_traffic(
                 ss->realm_options.name, (const char *)ss->username, (unsigned long)(ss->t_peer_received_packets),
                 (unsigned long)(ss->t_peer_received_bytes), (unsigned long)(ss->t_peer_sent_packets),
-                (unsigned long)(ss->t_peer_sent_bytes), 0, true);
+                (unsigned long)(ss->t_peer_sent_bytes), 0, true, ss->protocolgroup);
           } else {
             // Set prometheus traffic metrics
             prom_set_finished_traffic(NULL, (const char *)ss->username, (unsigned long)(ss->t_received_packets),
                                       (unsigned long)(ss->t_received_bytes), (unsigned long)(ss->t_sent_packets),
                                       (unsigned long)(ss->t_sent_bytes), (unsigned long)ss->t_before_ping_packets,
-                                      false);
+                                      false, ss->protocolgroup);
             prom_set_finished_traffic(NULL, (const char *)ss->username, (unsigned long)(ss->t_peer_received_packets),
                                       (unsigned long)(ss->t_peer_received_bytes),
                                       (unsigned long)(ss->t_peer_sent_packets), (unsigned long)(ss->t_peer_sent_bytes),
-                                      0, true);
+                                      0, true, ss->protocolgroup);
           }
           turn_time_t ct = get_turn_server_time(server) - ss->start_time;
           const uint32_t byte_to_kilobit = 125;
           uint64_t sent_rate_kbps = ss->sent_rate / byte_to_kilobit;
-          prom_dec_allocation(socket_type, family, (unsigned long)ct, (unsigned long)sent_rate_kbps);
+          prom_dec_allocation(socket_type, family, (unsigned long)ct, (unsigned long)sent_rate_kbps, ss->protocolgroup);
         }
       }
     }
