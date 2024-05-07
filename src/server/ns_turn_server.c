@@ -1443,6 +1443,9 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
     }
   }
 
+  // Signal change to add metrics
+  prom_inc_allocation_response(*err_code);
+
   return 0;
 }
 

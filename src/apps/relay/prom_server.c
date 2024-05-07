@@ -44,6 +44,7 @@ prom_counter_t *turn_rtt_client[8];
 prom_counter_t *turn_rtt_peer[8];
 prom_counter_t *turn_rtt_combined[8];
 prom_counter_t *turn_with_no_ping_rcvp;
+prom_counter_t *turn_allocation_response;
 
 void start_prometheus_server(void) {
   if (turn_params.prometheus == 0) {
@@ -194,6 +195,10 @@ void start_prometheus_server(void) {
   turn_with_no_ping_rcvp = prom_collector_registry_must_register_metric(prom_counter_new(
       "turn_with_no_ping_rcvp", "Count of packets received for TURN where no ICE ping has been observed", 0, NULL));
 
+  const char *response_labels[] = {"response_code"};
+  turn_allocation_response = prom_collector_registry_must_register_metric(prom_counter_new(
+      "turn_allocation_response", "Count of allocation responses sent (by error code)", 1, response_labels));
+
   promhttp_set_active_collector_registry(NULL);
 
   // some flags appeared first in microhttpd v0.9.53
@@ -322,7 +327,7 @@ int is_ipv6_enabled(void) {
   return ret;
 }
 
-// Signal change to add rtt metrics
+// Signal change to add metrics
 void prom_observe_rtt(prom_counter_t *counter[8], int microseconds, const char *protocolgroup) {
   const char *label[] = {protocolgroup};
   if (microseconds <= 25000) {
@@ -364,6 +369,16 @@ void prom_observe_rtt_peer(int microseconds, const char *protocolgroup) {
 void prom_observe_rtt_combined(int microseconds, const char *protocolgroup) {
   if (turn_params.prometheus == 1) {
     prom_observe_rtt(turn_rtt_combined, microseconds, protocolgroup);
+  }
+}
+
+void prom_inc_allocation_response(int err_code) {
+  if (turn_params.prometheus == 1) {
+    char label[80];
+    if (snprintf(label, sizeof(label), "%d", err_code) < (int)sizeof(label)) {
+      const char *labels[] = {label};
+      prom_counter_add(turn_allocation_response, 1, labels);
+    }
   }
 }
 
