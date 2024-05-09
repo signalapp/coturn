@@ -455,6 +455,8 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
       s->e = ioa_eng;
       add_socket_to_map(s, amap);
       if (open_client_connection_session(ts, &(sm->m.sm)) < 0) {
+        // Signal change to add session limit
+        IOA_CLOSE_SOCKET(s);
         return -1;
       }
     }

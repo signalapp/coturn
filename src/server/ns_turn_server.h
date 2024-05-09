@@ -229,7 +229,9 @@ void init_turn_server(
     int server_relay, send_turn_session_info_cb send_turn_session_info, send_https_socket_cb send_https_socket,
     allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name, const char *acme_redirect,
     ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family, vintp log_binding,
-    vintp no_stun_backward_compatibility, vintp response_origin_only_with_rfc5780, vintp respond_http_unsupported);
+    vintp no_stun_backward_compatibility, vintp response_origin_only_with_rfc5780, vintp respond_http_unsupported,
+    // Signal change to add session limit
+    int configured_session_limit);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 
