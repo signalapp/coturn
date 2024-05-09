@@ -45,6 +45,8 @@ prom_counter_t *turn_rtt_peer[8];
 prom_counter_t *turn_rtt_combined[8];
 prom_counter_t *turn_with_no_ping_rcvp;
 prom_counter_t *turn_allocation_response;
+prom_gauge_t *turn_session_limit;
+prom_counter_t *turn_sessions_overlimit;
 
 #if MHD_VERSION >= 0x00097002
 #define MHD_RESULT enum MHD_Result
@@ -234,6 +236,12 @@ void start_prometheus_server(void) {
   const char *response_labels[] = {"response_code"};
   turn_allocation_response = prom_collector_registry_must_register_metric(prom_counter_new(
       "turn_allocation_response", "Count of allocation responses sent (by error code)", 1, response_labels));
+
+  turn_session_limit = prom_collector_registry_must_register_metric(
+      prom_gauge_new("turn_session_limit", "Current number of additional sessions allowed", 0, NULL));
+
+  turn_sessions_overlimit = prom_collector_registry_must_register_metric(prom_counter_new(
+      "turn_sessions_overlimit", "Count of sessions deined because it would be over the limit", 0, NULL));
 
   // some flags appeared first in microhttpd v0.9.53
   unsigned int flags = 0;
@@ -439,6 +447,18 @@ void prom_inc_allocation_response(int err_code) {
       const char *labels[] = {label};
       prom_counter_add(turn_allocation_response, 1, labels);
     }
+  }
+}
+
+void prom_set_session_limit(int limit) {
+  if (turn_params.prometheus == 1) {
+    prom_gauge_set(turn_session_limit, limit, NULL);
+  }
+}
+
+void prom_inc_sessions_overlimit(void) {
+  if (turn_params.prometheus == 1) {
+    prom_counter_add(turn_sessions_overlimit, 1, NULL);
   }
 }
 

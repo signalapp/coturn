@@ -332,6 +332,8 @@ typedef struct _turn_params_ {
   vint no_stun_backward_compatibility;
   vint response_origin_only_with_rfc5780;
   vint respond_http_unsupported;
+  // Signal change to add session limit
+  int session_limit;
 } turn_params_t;
 
 extern turn_params_t turn_params;

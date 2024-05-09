@@ -4238,11 +4238,23 @@ static int write_to_peerchannel(ts_ur_super_session *ss, uint16_t chnum, ioa_net
 static void client_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *data, void *arg, int can_resume);
 static void peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *data, void *arg, int can_resume);
 
+// Signal change to add session limit
+static TURN_MUTEX_DECLARE(session_limit_mutex);
+static int session_limit;
+
 /////////////// Client actions /////////////////
 
 int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss, int force, const char *reason) {
 
   FUNCSTART;
+
+  // Signal change to add session limit
+  if (session_limit != -1) {
+    TURN_MUTEX_LOCK(&session_limit_mutex);
+    ++session_limit;
+    prom_set_session_limit(session_limit);
+    TURN_MUTEX_UNLOCK(&session_limit_mutex);
+  }
 
   if (!ss) {
     return -1;
@@ -4837,6 +4849,19 @@ int open_client_connection_session(turn_turnserver *server, struct socket_messag
     return -1;
   }
 
+  // Signal change to add session limit
+  if (session_limit != -1) {
+    TURN_MUTEX_LOCK(&session_limit_mutex);
+    if (session_limit == 0) {
+      TURN_MUTEX_UNLOCK(&session_limit_mutex);
+      prom_inc_sessions_overlimit();
+      return -1;
+    }
+    --session_limit;
+    prom_set_session_limit(session_limit);
+    TURN_MUTEX_UNLOCK(&session_limit_mutex);
+  }
+
   ts_ur_super_session *ss = create_new_ss(server);
 
   ss->client_socket = sm->s;
@@ -5039,10 +5064,23 @@ void init_turn_server(turn_turnserver *server, turnserver_id id, int verbose, io
                       allocate_bps_cb allocate_bps_func, int oauth, const char *oauth_server_name,
                       const char *acme_redirect, ALLOCATION_DEFAULT_ADDRESS_FAMILY allocation_default_address_family,
                       vintp log_binding, vintp no_stun_backward_compatibility, vintp response_origin_only_with_rfc5780,
-                      vintp respond_http_unsupported) {
+                      vintp respond_http_unsupported,
+                      // Signal change to add session limit
+                      int configured_session_limit) {
 
   if (!server) {
     return;
+  }
+
+  // Signal change to add session limit
+  if (id == 0) {
+    if (configured_session_limit) {
+      TURN_MUTEX_INIT(&session_limit_mutex);
+      session_limit = configured_session_limit;
+    } else {
+      session_limit = -1;
+    }
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "turn server session_limit = %d\n", session_limit);
   }
 
   memset(server, 0, sizeof(turn_turnserver));

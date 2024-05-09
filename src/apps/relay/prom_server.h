@@ -58,6 +58,8 @@ extern prom_counter_t *turn_rtt_peer[8];
 extern prom_counter_t *turn_rtt_combined[8];
 extern prom_counter_t *turn_with_no_ping_rcvp;
 extern prom_counter_t *turn_total_allocations;
+extern prom_counter_t *turn_session_limit;
+extern prom_counter_t *turn_sessions_overlimit;
 
 #define TURN_ALLOC_STR_MAX_SIZE (20)
 
@@ -89,6 +91,8 @@ void prom_observe_rtt_client(int microseconds, const char *protocolgroup);
 void prom_observe_rtt_peer(int microseconds, const char *protocolgroup);
 void prom_observe_rtt_combined(int microseconds, const char *protocolgroup);
 void prom_inc_allocation_response(int err_code);
+void prom_set_session_limit(int limit);
+void prom_inc_sessions_overlimit(void);
 
 #else
 
