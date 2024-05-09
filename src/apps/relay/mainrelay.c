@@ -229,7 +229,9 @@ turn_params_t turn_params = {
     0, /* log_binding */
     0, /* no_stun_backward_compatibility */
     0, /* response_origin_only_with_rfc5780 */
-    0  /* respond_http_unsupported */
+    0, /* respond_http_unsupported */
+    // Signal change to add session limit
+    0, /* session_limit */
 };
 
 //////////////// OpenSSL Init //////////////////////
@@ -1429,7 +1431,9 @@ enum EXTRA_OPTS {
   NO_STUN_BACKWARD_COMPATIBILITY_OPT,
   RESPONSE_ORIGIN_ONLY_WITH_RFC5780_OPT,
   RESPOND_HTTP_UNSUPPORTED_OPT,
-  VERSION_OPT
+  VERSION_OPT,
+  // Signal change to add session limit
+  SESSION_LIMIT_OPT
 };
 
 struct myoption {
@@ -1574,6 +1578,8 @@ static const struct myoption long_options[] = {
     {"respond-http-unsupported", optional_argument, NULL, RESPOND_HTTP_UNSUPPORTED_OPT},
     {"version", optional_argument, NULL, VERSION_OPT},
     {"syslog-facility", required_argument, NULL, SYSLOG_FACILITY_OPT},
+    // Signal change to add session limit
+    {"session-limit", required_argument, NULL, SESSION_LIMIT_OPT},
     {NULL, no_argument, NULL, 0}};
 
 static const struct myoption admin_long_options[] = {
@@ -2269,6 +2275,10 @@ static void set_option(int c, char *value) {
     break;
   case RESPOND_HTTP_UNSUPPORTED_OPT:
     turn_params.respond_http_unsupported = get_bool_value(value);
+    break;
+  // Signal change to add session limit
+  case SESSION_LIMIT_OPT:
+    turn_params.session_limit = atoi(value);
     break;
 
   /* these options have been already taken care of before: */
