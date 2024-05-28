@@ -3686,7 +3686,7 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh) {
         }
 #endif
         {
-          // Signal change to add address family label 
+          // Signal change to add address family label
           if (!refresh) {
             prom_inc_allocation(get_ioa_socket_type(ss->client_socket),
                                 get_ioa_socket_address_family(ss->client_socket), ss->protocolgroup);
