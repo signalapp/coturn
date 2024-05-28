@@ -28,10 +28,11 @@
  * SUCH DAMAGE.
  */
 
-#if !defined(__MAIN_RELAY__)
+#ifndef __MAIN_RELAY__
 #define __MAIN_RELAY__
 
 #include <limits.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -192,6 +193,7 @@ typedef struct _turn_params_ {
   char ca_cert_file[1025];
   char cert_file[1025];
   char pkey_file[1025];
+  bool rpk_enabled;
   char tls_password[513];
   char dh_file[1025];
 
@@ -340,14 +342,16 @@ extern turn_params_t turn_params;
 ////////////////  Listener server /////////////////
 
 static inline int get_alt_listener_port(void) {
-  if (turn_params.alt_listener_port < 1)
+  if (turn_params.alt_listener_port < 1) {
     return turn_params.listener_port + 1;
+  }
   return turn_params.alt_listener_port;
 }
 
 static inline int get_alt_tls_listener_port(void) {
-  if (turn_params.alt_tls_listener_port < 1)
+  if (turn_params.alt_tls_listener_port < 1) {
     return turn_params.tls_listener_port + 1;
+  }
   return turn_params.alt_tls_listener_port;
 }
 
@@ -391,7 +395,6 @@ struct ctr_state {
   unsigned int num;
   unsigned char ecount[16];
 };
-void generate_aes_128_key(char *filePath, unsigned char *returnedKey);
 unsigned char *base64encode(const void *b64_encode_this, int encode_this_many_bytes);
 void encrypt_aes_128(unsigned char *in, const unsigned char *mykey);
 unsigned char *base64decode(const void *b64_decode_this, int decode_this_many_bytes);

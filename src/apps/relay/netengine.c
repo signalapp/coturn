@@ -30,6 +30,8 @@
 
 #include "mainrelay.h"
 
+#include "ns_turn_ioalib.h"
+
 //////////// Backward compatibility with OpenSSL 1.0.x //////////////
 #if (OPENSSL_VERSION_NUMBER < 0x10100001L ||                                                                           \
      (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER <= 0x3040000fL))
@@ -240,22 +242,22 @@ static void del_alt_server(const char *saddr, int default_port, turn_server_addr
     } else {
 
       size_t i;
-      int found = 0;
       for (i = 0; i < list->size; ++i) {
         if (addr_eq(&(list->addrs[i]), &addr)) {
-          found = 1;
           break;
         }
       }
 
-      if (found) {
+      if (i < list->size) {
 
-        size_t j;
         ioa_addr *new_addrs = (ioa_addr *)malloc(sizeof(ioa_addr) * (list->size - 1));
-        for (j = 0; j < i; ++j) {
+        if (!new_addrs) {
+          return;
+        }
+        for (size_t j = 0; j < i; ++j) {
           addr_cpy(&(new_addrs[j]), &(list->addrs[j]));
         }
-        for (j = i; j < list->size - 1; ++j) {
+        for (size_t j = i; j < list->size - 1; ++j) {
           addr_cpy(&(new_addrs[j]), &(list->addrs[j + 1]));
         }
 
@@ -303,11 +305,13 @@ typedef struct update_ssl_ctx_cb_args {
  * Copy SSL context at "from", which may be NULL if no context in use
  */
 static void replace_one_ssl_ctx(SSL_CTX **to, SSL_CTX *from) {
-  if (*to)
+  if (*to) {
     SSL_CTX_free(*to);
+  }
 
-  if (from != NULL)
+  if (from != NULL) {
     SSL_CTX_up_ref(from);
+  }
 
   *to = from;
 }
@@ -328,8 +332,9 @@ static void update_ssl_ctx(evutil_socket_t sock, short events, update_ssl_ctx_cb
   struct event *next = args->next;
   TURN_MUTEX_UNLOCK(&turn_params.tls_mutex);
 
-  if (next != NULL)
+  if (next != NULL) {
     event_active(next, EV_READ, 0);
+  }
 
   UNUSED_ARG(sock);
   UNUSED_ARG(events);
@@ -350,6 +355,10 @@ void set_ssl_ctx(ioa_engine_handle e, turn_params_t *params) {
     args->next = params->tls_ctx_update_ev;
     params->tls_ctx_update_ev = ev;
     TURN_MUTEX_UNLOCK(&turn_params.tls_mutex);
+  } else {
+    if (args) {
+      free(args);
+    }
   }
 }
 
@@ -463,10 +472,11 @@ static authserver_id auth_message_counter = 1;
 
 void send_auth_message_to_auth_server(struct auth_message *am) {
   TURN_MUTEX_LOCK(&auth_message_counter_mutex);
-  if (auth_message_counter >= authserver_number)
+  if (auth_message_counter >= authserver_number) {
     auth_message_counter = 1;
-  else if (auth_message_counter < 1)
+  } else if (auth_message_counter < 1) {
     auth_message_counter = 1;
+  }
   authserver_id sn = auth_message_counter++;
   TURN_MUTEX_UNLOCK(&auth_message_counter_mutex);
 
@@ -508,9 +518,9 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr) {
       TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: can't find relay for turn_server_id: %d\n", __FUNCTION__, (int)am.id);
     }
 
-    if (output)
+    if (output) {
       evbuffer_add(output, &am, sizeof(struct auth_message));
-    else {
+    } else {
       ioa_network_buffer_delete(NULL, am.in_buffer.nbh);
       am.in_buffer.nbh = NULL;
     }
@@ -1021,8 +1031,9 @@ static void setup_listener(void) {
 #endif
   );
 
-  if (!turn_params.listener.ioa_eng)
+  if (!turn_params.listener.ioa_eng) {
     exit(-1);
+  }
 
   set_ssl_ctx(turn_params.listener.ioa_eng, &turn_params);
   turn_params.listener.rtcpmap = rtcp_map_create(turn_params.listener.ioa_eng);
@@ -1093,8 +1104,9 @@ static void setup_barriers(void) {
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
   {
-    if (pthread_barrier_init(&barrier, NULL, barrier_count) < 0)
+    if (pthread_barrier_init(&barrier, NULL, barrier_count) < 0) {
       perror("barrier init");
+    }
   }
 
 #endif
@@ -1139,8 +1151,9 @@ static void setup_socket_per_endpoint_udp_listener_servers(void) {
         int is_5780 = turn_params.rfc5780;
 
         if (turn_params.general_relay_servers_number <= 1) {
-          while (!(general_relay_servers[0]->ioa_eng))
+          while (!(general_relay_servers[0]->ioa_eng)) {
             sched_yield();
+          }
           udp_relay_servers[i] = general_relay_servers[0];
           continue;
         } else if (turn_params.general_relay_servers_number > 1) {
@@ -1241,8 +1254,9 @@ static void setup_socket_per_endpoint_udp_listener_servers(void) {
       }
     } else {
       turn_params.listener.udp_services[index] = NULL;
-      if (turn_params.rfc5780)
+      if (turn_params.rfc5780) {
         turn_params.listener.udp_services[index + 1] = NULL;
+      }
     }
     if (!turn_params.no_dtls && (turn_params.no_udp || (turn_params.listener_port != turn_params.tls_listener_port))) {
 
@@ -1285,8 +1299,9 @@ static void setup_socket_per_endpoint_udp_listener_servers(void) {
       }
     } else {
       turn_params.listener.dtls_services[index] = NULL;
-      if (turn_params.rfc5780)
+      if (turn_params.rfc5780) {
         turn_params.listener.dtls_services[index + 1] = NULL;
+      }
     }
   }
 }
@@ -1298,8 +1313,9 @@ static void setup_socket_per_thread_udp_listener_servers(void) {
   /* Create listeners */
 
   for (relayindex = 0; relayindex < get_real_general_relay_servers_number(); relayindex++) {
-    while (!(general_relay_servers[relayindex]->ioa_eng) || !(general_relay_servers[relayindex]->server.e))
+    while (!(general_relay_servers[relayindex]->ioa_eng) || !(general_relay_servers[relayindex]->server.e)) {
       sched_yield();
+    }
   }
 
   /* Aux UDP servers */
@@ -1361,8 +1377,9 @@ static void setup_socket_per_thread_udp_listener_servers(void) {
       }
     } else {
       turn_params.listener.udp_services[index] = NULL;
-      if (turn_params.rfc5780)
+      if (turn_params.rfc5780) {
         turn_params.listener.udp_services[index + 1] = NULL;
+      }
     }
     if (!turn_params.no_dtls && (turn_params.no_udp || (turn_params.listener_port != turn_params.tls_listener_port))) {
 
@@ -1393,8 +1410,9 @@ static void setup_socket_per_thread_udp_listener_servers(void) {
       }
     } else {
       turn_params.listener.dtls_services[index] = NULL;
-      if (turn_params.rfc5780)
+      if (turn_params.rfc5780) {
         turn_params.listener.dtls_services[index + 1] = NULL;
+      }
     }
   }
 }
@@ -1450,8 +1468,9 @@ static void setup_socket_per_session_udp_listener_servers(void) {
       }
     } else {
       turn_params.listener.udp_services[index] = NULL;
-      if (turn_params.rfc5780)
+      if (turn_params.rfc5780) {
         turn_params.listener.udp_services[index + 1] = NULL;
+      }
     }
     if (!turn_params.no_dtls && (turn_params.no_udp || (turn_params.listener_port != turn_params.tls_listener_port))) {
 
@@ -1474,8 +1493,9 @@ static void setup_socket_per_session_udp_listener_servers(void) {
       }
     } else {
       turn_params.listener.dtls_services[index] = NULL;
-      if (turn_params.rfc5780)
+      if (turn_params.rfc5780) {
         turn_params.listener.dtls_services[index + 1] = NULL;
+      }
     }
   }
 }
@@ -1520,54 +1540,58 @@ static void setup_tcp_listener_servers(ioa_engine_handle e, struct relay_server 
           create_tls_listener_server(turn_params.listener_ifname, turn_params.listener.addrs[i],
                                      turn_params.tcp_use_proxy ? turn_params.tcp_proxy_port : turn_params.listener_port,
                                      turn_params.verbose, e, send_socket_to_general_relay, relay_server);
-      if (turn_params.rfc5780)
+      if (turn_params.rfc5780) {
         tcp_services[index + 1] =
             turn_params.tcp_use_proxy
                 ? NULL
                 : create_tls_listener_server(turn_params.listener_ifname, turn_params.listener.addrs[i],
                                              get_alt_listener_port(), turn_params.verbose, e,
                                              send_socket_to_general_relay, relay_server);
+      }
     } else {
       tcp_services[index] = NULL;
-      if (turn_params.rfc5780)
+      if (turn_params.rfc5780) {
         tcp_services[index + 1] = NULL;
+      }
     }
     if (!turn_params.no_tls && !turn_params.tcp_use_proxy &&
         (turn_params.no_tcp || (turn_params.listener_port != turn_params.tls_listener_port))) {
       tls_services[index] = create_tls_listener_server(turn_params.listener_ifname, turn_params.listener.addrs[i],
                                                        turn_params.tls_listener_port, turn_params.verbose, e,
                                                        send_socket_to_general_relay, relay_server);
-      if (turn_params.rfc5780)
+      if (turn_params.rfc5780) {
         tls_services[index + 1] = create_tls_listener_server(turn_params.listener_ifname, turn_params.listener.addrs[i],
                                                              get_alt_tls_listener_port(), turn_params.verbose, e,
                                                              send_socket_to_general_relay, relay_server);
+      }
     } else {
       tls_services[index] = NULL;
-      if (turn_params.rfc5780)
+      if (turn_params.rfc5780) {
         tls_services[index + 1] = NULL;
+      }
     }
   }
 }
 
 static int get_alt_addr(ioa_addr *addr, ioa_addr *alt_addr) {
-  if (!addr || !turn_params.rfc5780 || (turn_params.listener.addrs_number < 2))
-    ;
-  else {
+  if (!addr || !turn_params.rfc5780 || (turn_params.listener.addrs_number < 2)) {
+  } else {
     size_t index = 0xffff;
     size_t i = 0;
     int alt_port = -1;
     int port = addr_get_port(addr);
 
-    if (port == turn_params.listener_port)
+    if (port == turn_params.listener_port) {
       alt_port = get_alt_listener_port();
-    else if (port == get_alt_listener_port())
+    } else if (port == get_alt_listener_port()) {
       alt_port = turn_params.listener_port;
-    else if (port == turn_params.tls_listener_port)
+    } else if (port == turn_params.tls_listener_port) {
       alt_port = get_alt_tls_listener_port();
-    else if (port == get_alt_tls_listener_port())
+    } else if (port == get_alt_tls_listener_port()) {
       alt_port = turn_params.tls_listener_port;
-    else
+    } else {
       return -1;
+    }
 
     for (i = 0; i < turn_params.listener.addrs_number; i++) {
       if (turn_params.listener.encaddrs && turn_params.listener.encaddrs[i]) {
@@ -1596,11 +1620,13 @@ static int get_alt_addr(ioa_addr *addr, ioa_addr *alt_addr) {
 }
 
 static void run_events(struct event_base *eb, ioa_engine_handle e) {
-  if (!eb && e)
+  if (!eb && e) {
     eb = e->event_base;
+  }
 
-  if (!eb)
+  if (!eb) {
     return;
+  }
 
   struct timeval timeout;
 
@@ -1853,8 +1879,9 @@ void setup_server(void) {
 
   authserver_number = 1 + (authserver_id)(turn_params.cpus / 2);
 
-  if (authserver_number < MIN_AUTHSERVER_NUMBER)
+  if (authserver_number < MIN_AUTHSERVER_NUMBER) {
     authserver_number = MIN_AUTHSERVER_NUMBER;
+  }
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
 
@@ -1871,12 +1898,13 @@ void setup_server(void) {
   setup_general_relay_servers();
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total General servers: %d\n", (int)get_real_general_relay_servers_number());
 
-  if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD)
+  if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_THREAD) {
     setup_socket_per_thread_udp_listener_servers();
-  else if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_ENDPOINT)
+  } else if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_ENDPOINT) {
     setup_socket_per_endpoint_udp_listener_servers();
-  else if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_SESSION)
+  } else if (turn_params.net_engine_version == NEV_UDP_SOCKET_PER_SESSION) {
     setup_socket_per_session_udp_listener_servers();
+  }
 
   if (turn_params.net_engine_version != NEV_UDP_SOCKET_PER_THREAD) {
     setup_tcp_listener_servers(turn_params.listener.ioa_eng, NULL);

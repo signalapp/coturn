@@ -48,11 +48,13 @@ void init_allocation(void *owner, allocation *a, ur_map *tcp_connections) {
   }
 }
 
+// Signal change to add address family label
 void clear_allocation(allocation *a, SOCKET_TYPE socket_type, int family) {
   if (a) {
 
-    if (a->is_valid)
+    if (a->is_valid) {
       turn_report_allocation_delete(a, socket_type, family);
+    }
 
     if (a->tcs.elems) {
       size_t i;
@@ -87,25 +89,29 @@ void clear_allocation(allocation *a, SOCKET_TYPE socket_type, int family) {
 }
 
 relay_endpoint_session *get_relay_session(allocation *a, int family) {
-  if (a)
+  if (a) {
     return &(a->relay_sessions[ALLOC_INDEX(family)]);
+  }
   return NULL;
 }
 
 int get_relay_session_failure(allocation *a, int family) {
-  if (a)
+  if (a) {
     return a->relay_sessions_failure[ALLOC_INDEX(family)];
+  }
   return 0;
 }
 
 void set_relay_session_failure(allocation *a, int family) {
-  if (a)
+  if (a) {
     a->relay_sessions_failure[ALLOC_INDEX(family)] = 1;
+  }
 }
 
 ioa_socket_handle get_relay_socket(allocation *a, int family) {
-  if (a)
+  if (a) {
     return a->relay_sessions[ALLOC_INDEX(family)].s;
+  }
   return NULL;
 }
 
@@ -143,15 +149,17 @@ void set_allocation_lifetime_ev(allocation *a, turn_time_t exp_time, ioa_timer_h
 }
 
 int is_allocation_valid(const allocation *a) {
-  if (a)
+  if (a) {
     return a->is_valid;
-  else
+  } else {
     return 0;
+  }
 }
 
 void set_allocation_valid(allocation *a, int value) {
-  if (a)
+  if (a) {
     a->is_valid = value;
+  }
 }
 
 turn_permission_info *allocation_get_permission(allocation *a, const ioa_addr *addr) {
@@ -163,7 +171,7 @@ turn_permission_info *allocation_get_permission(allocation *a, const ioa_addr *a
 
 ///////////////////////////// TURN_PERMISSION /////////////////////////////////
 
-static int delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_value_type value);
+static bool delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_value_type value);
 
 void turn_permission_clean(turn_permission_info *tinfo) {
   if (tinfo && tinfo->allocated) {
@@ -186,8 +194,9 @@ void turn_permission_clean(turn_permission_info *tinfo) {
 }
 
 static void init_turn_permission_hashtable(turn_permission_hashtable *map) {
-  if (map)
+  if (map) {
     memset(map, 0, sizeof(turn_permission_hashtable));
+  }
 }
 
 static void free_turn_permission_hashtable(turn_permission_hashtable *map) {
@@ -228,8 +237,9 @@ static void free_turn_permission_hashtable(turn_permission_hashtable *map) {
 }
 
 static turn_permission_info *get_from_turn_permission_hashtable(turn_permission_hashtable *map, const ioa_addr *addr) {
-  if (!addr || !map)
+  if (!addr || !map) {
     return NULL;
+  }
 
   uint32_t index = addr_hash_no_port(addr) & (TURN_PERMISSION_HASHTABLE_SIZE - 1);
   turn_permission_array *parray = &(map->table[index]);
@@ -270,7 +280,7 @@ static void ch_info_clean(ch_info *c) {
   }
 }
 
-static int delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_value_type value) {
+static bool delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_value_type value) {
   UNUSED_ARG(key);
 
   if (value) {
@@ -283,7 +293,7 @@ static int delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_v
     ch_info_clean(chn);
   }
 
-  return 0;
+  return false;
 }
 
 void turn_channel_delete(ch_info *chn) {
@@ -312,8 +322,9 @@ ch_info *allocation_get_new_ch_info(allocation *a, uint16_t chnum, ioa_addr *pee
 
   turn_permission_info *tinfo = get_from_turn_permission_hashtable(&(a->addr_to_perm), peer_addr);
 
-  if (!tinfo)
+  if (!tinfo) {
     tinfo = allocation_add_permission(a, peer_addr);
+  }
 
   ch_info *chn = ch_map_get(&(a->chns), chnum, 1);
 
@@ -557,8 +568,9 @@ tcp_connection *create_tcp_connection(uint8_t server_id, allocation *a, stun_tid
   }
   tcp_connection *tc = (tcp_connection *)calloc(sizeof(tcp_connection), 1);
   addr_cpy(&(tc->peer_addr), peer_addr);
-  if (tid)
+  if (tid) {
     memcpy(&(tc->tid), tid, sizeof(stun_tid));
+  }
   tc->owner = a;
 
   int found = 0;
@@ -663,8 +675,9 @@ tcp_connection *get_tcp_connection_by_peer(allocation *a, ioa_addr *peer_addr) {
 }
 
 int can_accept_tcp_connection_from_peer(allocation *a, ioa_addr *peer_addr, int server_relay) {
-  if (server_relay)
+  if (server_relay) {
     return 1;
+  }
 
   if (a && peer_addr) {
     return (get_from_turn_permission_hashtable(&(a->addr_to_perm), peer_addr) != NULL);
