@@ -103,8 +103,9 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
                                unsigned long sentp, unsigned long sentb, unsigned long without_pingp, bool peer,
                                const char *protocolgroup);
 
-void prom_inc_allocation(SOCKET_TYPE type);
-void prom_dec_allocation(SOCKET_TYPE type);
+void prom_inc_allocation(SOCKET_TYPE type, int addr_family, const char *protocolgroup);
+void prom_dec_allocation(SOCKET_TYPE type, int addr_family, unsigned long duration, unsigned long sent_rate_kbps,
+                         const char *protocolgroup);
 
 #endif /* TURN_NO_PROMETHEUS */
 

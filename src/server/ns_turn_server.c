@@ -1496,8 +1496,9 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
   }
 
   // Signal change to add metrics
+#if !defined(TURN_NO_PROMETHEUS)
   prom_inc_allocation_response(*err_code);
-
+#endif
   return 0;
 }
 
@@ -4252,7 +4253,9 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
   if (session_limit != -1) {
     TURN_MUTEX_LOCK(&session_limit_mutex);
     ++session_limit;
+#if !defined(TURN_NO_PROMETHEUS)
     prom_set_session_limit(session_limit);
+#endif
     TURN_MUTEX_UNLOCK(&session_limit_mutex);
   }
 
@@ -4854,11 +4857,15 @@ int open_client_connection_session(turn_turnserver *server, struct socket_messag
     TURN_MUTEX_LOCK(&session_limit_mutex);
     if (session_limit == 0) {
       TURN_MUTEX_UNLOCK(&session_limit_mutex);
+#if !defined(TURN_NO_PROMETHEUS)
       prom_inc_sessions_overlimit();
+#endif
       return -1;
     }
     --session_limit;
+#if !defined(TURN_NO_PROMETHEUS)
     prom_set_session_limit(session_limit);
+#endif
     TURN_MUTEX_UNLOCK(&session_limit_mutex);
   }
 
