@@ -3237,9 +3237,12 @@ static int handle_turn_create_permission(turn_turnserver *server, ts_ur_super_se
           if (!get_relay_socket(a, peer_addr.ss.sa_family)) {
             *err_code = 443;
             *reason = (const uint8_t *)"Peer Address Family Mismatch (4)";
+          // Signal change to accept but ignore perrmissions to forbidden IPs
+          /*
           } else if (!good_peer_addr(server, ss->realm_options.name, &peer_addr, ss->id)) {
             *err_code = 403;
             *reason = (const uint8_t *)"Forbidden IP";
+          */
           } else {
             addr_found++;
           }
@@ -3288,10 +3291,15 @@ static int handle_turn_create_permission(turn_turnserver *server, ts_ur_super_se
           stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh),
                                  sar, &peer_addr, NULL);
 
-          addr_set_port(&peer_addr, 0);
-          if (update_permission(ss, &peer_addr) < 0) {
-            *err_code = 500;
-            *reason = (const uint8_t *)"Cannot update some permissions (critical server software error)";
+          // Signal change to accept but ignore permissions to forbidden IPs
+          if (good_peer_addr(server, ss->realm_options.name, &peer_addr, ss->id)) {
+            addr_set_port(&peer_addr, 0);
+            if (update_permission(ss, &peer_addr) < 0) {
+              *err_code = 500;
+              *reason = (const uint8_t *)"Cannot update some permissions (critical server software error)";
+            }
+          } else {
+            prom_inc_ignored_denied_peer();
           }
         } break;
         default:;
