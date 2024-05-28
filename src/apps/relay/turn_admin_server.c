@@ -3862,9 +3862,9 @@ size_t rtt_maps_count = 0;
 size_t rtt_map_current = 0;
 FILE *rtt_file;
 
-int rtt_foreach(ur_map_key_type key, ur_map_value_type value) {
+bool rtt_foreach(ur_map_key_type key, ur_map_value_type value) {
   if (!value) {
-    return 0;
+    return false;
   }
   ur_map_value_type min = value;
   for (size_t i = rtt_map_current + 1; i < rtt_maps_count; ++i) {
@@ -3896,7 +3896,7 @@ int rtt_foreach(ur_map_key_type key, ur_map_value_type value) {
     inet_ntop(AF_INET, &addr.sin_addr, saddr, sizeof(saddr));
     fprintf(rtt_file, "%s/24,%ld\n", saddr, min);
   }
-  return 0;
+  return false;
 }
 
 void admin_server_rtt_timer_handler(ioa_engine *engine, void *arg) {
