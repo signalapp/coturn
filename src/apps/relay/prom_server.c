@@ -433,8 +433,19 @@ void prom_set_finished_traffic(const char *realm, const char *user, unsigned lon
   UNUSED_ARG(protocolgroup);
 }
 
-void prom_inc_allocation(SOCKET_TYPE type) { UNUSED_ARG(type); }
+void prom_inc_allocation(SOCKET_TYPE type, int addr_family, const char *protocolgroup) {
+  UNUSED_ARG(type);
+  UNUSED_ARG(addr_family);
+  UNUSED_ARG(protocolgroup);
+}
 
-void prom_dec_allocation(SOCKET_TYPE type) { UNUSED_ARG(type); }
+void prom_dec_allocation(SOCKET_TYPE type, int addr_family, unsigned long duration, unsigned long sent_rate_kbps,
+                         const char *protocolgroup) {
+  UNUSED_ARG(type);
+  UNUSED_ARG(addr_family);
+  UNUSED_ARG(duration);
+  UNUSED_ARG(sent_rate_kbps);
+  UNUSED_ARG(protocolgroup);
+}
 
 #endif /* TURN_NO_PROMETHEUS */

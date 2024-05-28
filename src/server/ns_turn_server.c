@@ -1479,8 +1479,9 @@ static int handle_turn_allocate(turn_turnserver *server, ts_ur_super_session *ss
   }
 
   // Signal change to add metrics
+#if !defined(TURN_NO_PROMETHEUS)
   prom_inc_allocation_response(*err_code);
-
+#endif
   return 0;
 }
 
@@ -3237,12 +3238,12 @@ static int handle_turn_create_permission(turn_turnserver *server, ts_ur_super_se
           if (!get_relay_socket(a, peer_addr.ss.sa_family)) {
             *err_code = 443;
             *reason = (const uint8_t *)"Peer Address Family Mismatch (4)";
-          // Signal change to accept but ignore perrmissions to forbidden IPs
-          /*
-          } else if (!good_peer_addr(server, ss->realm_options.name, &peer_addr, ss->id)) {
-            *err_code = 403;
-            *reason = (const uint8_t *)"Forbidden IP";
-          */
+            // Signal change to accept but ignore perrmissions to forbidden IPs
+            /*
+            } else if (!good_peer_addr(server, ss->realm_options.name, &peer_addr, ss->id)) {
+              *err_code = 403;
+              *reason = (const uint8_t *)"Forbidden IP";
+            */
           } else {
             addr_found++;
           }
@@ -3299,7 +3300,9 @@ static int handle_turn_create_permission(turn_turnserver *server, ts_ur_super_se
               *reason = (const uint8_t *)"Cannot update some permissions (critical server software error)";
             }
           } else {
+#if !defined(TURN_NO_PROMETHEUS)
             prom_inc_ignored_denied_peer();
+#endif
           }
         } break;
         default:;
@@ -4275,7 +4278,9 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
   if (session_limit != -1) {
     TURN_MUTEX_LOCK(&session_limit_mutex);
     ++session_limit;
+#if !defined(TURN_NO_PROMETHEUS)
     prom_set_session_limit(session_limit);
+#endif
     TURN_MUTEX_UNLOCK(&session_limit_mutex);
   }
 
@@ -4877,11 +4882,15 @@ int open_client_connection_session(turn_turnserver *server, struct socket_messag
     TURN_MUTEX_LOCK(&session_limit_mutex);
     if (session_limit == 0) {
       TURN_MUTEX_UNLOCK(&session_limit_mutex);
+#if !defined(TURN_NO_PROMETHEUS)
       prom_inc_sessions_overlimit();
+#endif
       return -1;
     }
     --session_limit;
+#if !defined(TURN_NO_PROMETHEUS)
     prom_set_session_limit(session_limit);
+#endif
     TURN_MUTEX_UNLOCK(&session_limit_mutex);
   }
 
