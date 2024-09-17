@@ -97,7 +97,7 @@ char *decryptPassword(char *in, const unsigned char *mykey) {
   char *out;
   unsigned char iv[8] = {0}; // changed
   AES_KEY key;
-  unsigned char outdata[256]; // changed
+  unsigned char outdata[256] = {0}; // changed
   AES_set_encrypt_key(mykey, 128, &key);
   int newTotalSize = decodedTextSize(in);
   int bytes_to_decode = strlen(in);
@@ -105,7 +105,6 @@ char *decryptPassword(char *in, const unsigned char *mykey) {
   char last[1024] = "";
   struct ctr_state state;
   init_ctr(&state, iv);
-  memset(outdata, '\0', sizeof(outdata));
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
   CRYPTO_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num,
@@ -115,14 +114,13 @@ char *decryptPassword(char *in, const unsigned char *mykey) {
 #endif
 
   strcat(last, (char *)outdata);
-  out = (char *)malloc(sizeof(char) * strlen(last));
+  out = (char *)malloc(sizeof(char) * (strlen(last) + 1)); // add 1 to allocate space for terminating '\0'
   strcpy(out, last);
   return out;
 }
 
 static Myconninfo *MyconninfoParse(char *userdb, char **errmsg) {
-  Myconninfo *co = (Myconninfo *)malloc(sizeof(Myconninfo));
-  memset(co, 0, sizeof(Myconninfo));
+  Myconninfo *co = (Myconninfo *)calloc(1, sizeof(Myconninfo));
   if (userdb) {
     char *s0 = strdup(userdb);
     char *s = s0;
@@ -403,11 +401,8 @@ static int mysql_get_user_key(uint8_t *usname, uint8_t *realm, hmackey_t key) {
               char kval[sizeof(hmackey_t) + sizeof(hmackey_t) + 1];
               memcpy(kval, row[0], sz);
               kval[sz] = 0;
-              if (convert_string_key_to_binary(kval, key, sz / 2) < 0) {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n", kval, usname);
-              } else {
-                ret = 0;
-              }
+              convert_string_key_to_binary(kval, key, sz / 2);
+              ret = 0;
             }
           }
         }

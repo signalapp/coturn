@@ -84,7 +84,7 @@ static void redisLibeventReadEvent(evutil_socket_t fd, short event, void *arg) {
       } while ((len < 0) && socket_eintr());
       if (len < 1) {
         e->invalid = 1;
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Redis connection broken: e=0x%lx\n", __FUNCTION__, ((unsigned long)e));
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Redis connection broken: e=0x%p\n", __FUNCTION__, e);
       }
     }
     if (redis_le_valid(e)) {
@@ -204,8 +204,7 @@ void send_message_to_redis(redis_context_handle rch, const char *command, const 
 
       if ((redisAsyncCommand(ac, NULL, e, rm.format, rm.arg) != REDIS_OK)) {
         e->invalid = 1;
-        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Redis connection broken: ac=0x%lx, e=0x%lx\n", __FUNCTION__,
-                      (unsigned long)ac, (unsigned long)e);
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Redis connection broken: ac=0x%p, e=0x%p\n", __FUNCTION__, ac, e);
       }
     }
   }
@@ -214,9 +213,6 @@ void send_message_to_redis(redis_context_handle rch, const char *command, const 
 ///////////////////////// Attach /////////////////////////////////
 
 redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int port0, char *pwd, int db) {
-
-  struct redisLibeventEvents *e = NULL;
-  redisAsyncContext *ac = NULL;
 
   char ip[256];
   if (ip0 && ip0[0]) {
@@ -230,7 +226,7 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
     port = port0;
   }
 
-  ac = redisAsyncConnect(ip, port);
+  redisAsyncContext *ac = redisAsyncConnect(ip, port);
   if (!ac) {
     fprintf(stderr, "Error: redisAsyncConnect returned NULL\n");
     return NULL;
@@ -240,8 +236,10 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
   }
 
   /* Create container for context and r/w events */
-  e = (struct redisLibeventEvents *)malloc(sizeof(struct redisLibeventEvents));
-  memset(e, 0, sizeof(struct redisLibeventEvents));
+  struct redisLibeventEvents *e = (struct redisLibeventEvents *)calloc(1, sizeof(struct redisLibeventEvents));
+  if (!e) {
+    return NULL;
+  }
 
   e->allocated = 1;
   e->context = ac;

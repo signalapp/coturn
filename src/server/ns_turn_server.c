@@ -35,7 +35,14 @@
 #include "../apps/relay/prom_server.h"
 #include "ns_turn_allocation.h"
 #include "ns_turn_ioalib.h"
+#include "ns_turn_msg_defs.h" // for STUN_ATTRIBUTE_NONCE
 #include "ns_turn_utils.h"
+
+#include "apputils.h" // for turn_random, base64_decode
+
+#include <stdio.h>  // for snprintf
+#include <stdlib.h> // for free, malloc, calloc, realloc
+#include <string.h> // for memcpy, strlen, strcmp
 
 ///////////////////////////////////////////
 
@@ -380,18 +387,12 @@ static inline ioa_socket_handle get_relay_socket_ss(ts_ur_super_session *ss, int
 
 /////////// Session info ///////
 
-void turn_session_info_init(struct turn_session_info *tsi) {
-  if (tsi) {
-    memset(tsi, 0, sizeof(struct turn_session_info));
-  }
-}
-
 void turn_session_info_clean(struct turn_session_info *tsi) {
   if (tsi) {
     if (tsi->extra_peers_data) {
       free(tsi->extra_peers_data);
     }
-    turn_session_info_init(tsi);
+    memset(tsi, 0, sizeof(struct turn_session_info));
   }
 }
 
@@ -625,7 +626,7 @@ int turn_session_info_copy_from(struct turn_session_info *tsi, ts_ur_super_sessi
 int report_turn_session_info(turn_turnserver *server, ts_ur_super_session *ss, int force_invalid) {
   if (server && ss && server->send_turn_session_info) {
     struct turn_session_info tsi;
-    turn_session_info_init(&tsi);
+    memset(&tsi, 0, sizeof(struct turn_session_info));
     if (turn_session_info_copy_from(&tsi, ss) < 0) {
       turn_session_info_clean(&tsi);
     } else {
@@ -1797,7 +1798,7 @@ static int handle_turn_refresh(turn_turnserver *server, ts_ur_super_session *ss,
 
                     if ((server->fingerprint) || ss->enforce_fingerprints) {
                       size_t len = ioa_network_buffer_get_size(nbh);
-                      if (stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len) < 0) {
+                      if (!stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len)) {
                         *err_code = 500;
                         ioa_network_buffer_delete(server->e, nbh);
                         return -1;
@@ -2308,8 +2309,8 @@ static int handle_turn_connect(turn_turnserver *server, ts_ur_super_session *ss,
       switch (attr_type) {
         SKIP_ATTRIBUTES;
       case STUN_ATTRIBUTE_XOR_PEER_ADDRESS: {
-        if (stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh),
-                                   sar, &peer_addr, NULL) == -1) {
+        if (!stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh),
+                                    ioa_network_buffer_get_size(in_buffer->nbh), sar, &peer_addr, NULL)) {
           *err_code = 400;
           *reason = (const uint8_t *)"Bad Peer Address";
         } else {
@@ -2767,8 +2768,8 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
                                uint32_t cookie, int old_stun) {
 
   FUNCSTART;
-  int change_ip = 0;
-  int change_port = 0;
+  bool change_ip = false;
+  bool change_port = false;
   int padding = 0;
   int response_port_present = 0;
   uint16_t response_port = 0;
@@ -2876,7 +2877,7 @@ static int handle_turn_binding(turn_turnserver *server, ts_ur_super_session *ss,
     size_t len = ioa_network_buffer_get_size(nbh);
     if (stun_set_binding_response_str(ioa_network_buffer_data(nbh), &len, tid,
                                       get_remote_addr_from_ioa_socket(ss->client_socket), 0, NULL, cookie, old_stun,
-                                      *server->no_stun_backward_compatibility) >= 0) {
+                                      *server->no_stun_backward_compatibility)) {
 
       addr_cpy(response_origin, get_local_addr_from_ioa_socket(ss->client_socket));
 
@@ -4128,8 +4129,7 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
         {
           size_t oldsz = strlen(get_version(server));
           size_t newsz = (((oldsz) >> 2) + 1) << 2;
-          uint8_t software[120];
-          memset(software, 0, sizeof(software));
+          uint8_t software[120] = {0};
           if (newsz > sizeof(software)) {
             newsz = sizeof(software);
           }
@@ -4185,8 +4185,7 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
     {
       size_t oldsz = strlen(get_version(server));
       size_t newsz = (((oldsz) >> 2) + 1) << 2;
-      uint8_t software[120];
-      memset(software, 0, sizeof(software));
+      uint8_t software[120] = {0};
       if (newsz > sizeof(software)) {
         newsz = sizeof(software);
       }
@@ -4324,8 +4323,8 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
   }
 
   if (eve(server->verbose)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "closing session 0x%lx, client socket 0x%lx (socket session=0x%lx)\n", (long)ss,
-                  (long)ss->client_socket, (long)get_ioa_socket_session(ss->client_socket));
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "closing session %p, client socket %p (socket session=%p)\n", ss,
+                  ss->client_socket, get_ioa_socket_session(ss->client_socket));
   }
 
   if (server->disconnect) {
@@ -4422,7 +4421,7 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session 
   } else {
 
     if (eve(server->verbose)) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: prepare to write to s 0x%lx\n", __FUNCTION__, (long)(ss->client_socket));
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: prepare to write to s %p\n", __FUNCTION__, ss->client_socket);
     }
 
     int skip = 0;
@@ -4645,8 +4644,8 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
   }
 
   if (eve(server->verbose)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: data.buffer=0x%lx, data.len=%ld\n", __FUNCTION__,
-                  (long)ioa_network_buffer_data(in_buffer->nbh), (long)ioa_network_buffer_get_size(in_buffer->nbh));
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: data.buffer=%p, data.len=%ld\n", __FUNCTION__,
+                  ioa_network_buffer_data(in_buffer->nbh), (long)ioa_network_buffer_get_size(in_buffer->nbh));
   }
 
   uint16_t chnum = 0;
@@ -4720,7 +4719,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
 
       if ((server->fingerprint) || ss->enforce_fingerprints) {
         size_t len = ioa_network_buffer_get_size(nbh);
-        if (stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len) < 0) {
+        if (!stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len)) {
           FUNCEND;
           ioa_network_buffer_delete(server->e, nbh);
           return -1;
@@ -4775,13 +4774,13 @@ static int read_client_connection(turn_turnserver *server, ts_ur_super_session *
                           get_ioa_socket_cipher(ss->client_socket), get_ioa_socket_ssl_method(ss->client_socket),
                           ioa_network_buffer_get_size(in_buffer->nbh));
             if (server->send_https_socket) {
-              TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s socket to be detached: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,
-                            (long)ss->client_socket, get_ioa_socket_type(ss->client_socket),
+              TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s socket to be detached: %p, st=%d, sat=%d\n", __FUNCTION__,
+                            ss->client_socket, get_ioa_socket_type(ss->client_socket),
                             get_ioa_socket_app_type(ss->client_socket));
               ioa_socket_handle new_s = detach_ioa_socket(ss->client_socket);
               if (new_s) {
-                TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s new detached socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,
-                              (long)new_s, get_ioa_socket_type(new_s), get_ioa_socket_app_type(new_s));
+                TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s new detached socket: %p, st=%d, sat=%d\n", __FUNCTION__, new_s,
+                              get_ioa_socket_type(new_s), get_ioa_socket_app_type(new_s));
                 server->send_https_socket(new_s);
               }
               ss->to_be_closed = 1;
@@ -5078,8 +5077,8 @@ static void client_input_handler(ioa_socket_handle s, int event_type, ioa_net_da
 
   if (ss->to_be_closed) {
     if (server->verbose) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: client socket to be closed in client handler: ss=0x%lx\n",
-                    (unsigned long long)(ss->id), (long)ss);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: client socket to be closed in client handler: ss=%p\n",
+                    (unsigned long long)(ss->id), ss);
     }
     set_ioa_socket_tobeclosed(s);
   }

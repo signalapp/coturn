@@ -391,10 +391,10 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
         thrid = (long)pthread_self();
 #endif
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                      "%s: 111.111: thrid=0x%lx: Amap = 0x%lx, socket container=0x%lx, local addr %s, remote addr %s, "
-                      "s=0x%lx, done=%d, tbc=%d\n",
-                      __FUNCTION__, thrid, (long)amap, (long)(chs->sockets_container), (char *)saddr, (char *)rsaddr,
-                      (long)s, (int)(chs->done), (int)(chs->tobeclosed));
+                      "%s: 111.111: thrid=0x%lx: Amap = %p, socket container=%p, local addr %s, remote addr %s, "
+                      "s=%p, done=%d, tbc=%d\n",
+                      __FUNCTION__, thrid, amap, chs->sockets_container, (char *)saddr, (char *)rsaddr, s,
+                      (int)(chs->done), (int)(chs->tobeclosed));
       }
     }
 
@@ -417,10 +417,10 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server, struct mes
         thrid = (long)pthread_self();
 #endif
         TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-                      "%s: 111.222: thrid=0x%lx: Amap = 0x%lx, socket container=0x%lx, local addr %s, remote addr %s, "
+                      "%s: 111.222: thrid=0x%lx: Amap = %p, socket container=%p, local addr %s, remote addr %s, "
                       "s=0x%lx, done=%d, tbc=%d, st=%d, sat=%d\n",
-                      __FUNCTION__, thrid, (long)amap, (long)(chs->sockets_container), (char *)saddr, (char *)rsaddr,
-                      (long)chs, (int)(chs->done), (int)(chs->tobeclosed), (int)(chs->st), (int)(chs->sat));
+                      __FUNCTION__, thrid, amap, chs->sockets_container, (char *)saddr, (char *)rsaddr, (long)chs,
+                      (int)(chs->done), (int)(chs->tobeclosed), (int)(chs->st), (int)(chs->sat));
       }
     }
 
@@ -482,14 +482,12 @@ static int create_new_connected_udp_socket(dtls_listener_relay_server_type *serv
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot bind udp server socket to device %s\n", (char *)(s->e->relay_ifname));
   }
 
-  ioa_socket_handle ret = (ioa_socket *)malloc(sizeof(ioa_socket));
+  ioa_socket_handle ret = (ioa_socket *)calloc(1, sizeof(ioa_socket));
   if (!ret) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate new socket structure\n", __FUNCTION__);
     socket_closesocket(udp_fd);
     return -1;
   }
-
-  memset(ret, 0, sizeof(ioa_socket));
 
   ret->magic = SOCKET_MAGIC;
 

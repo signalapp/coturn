@@ -34,6 +34,9 @@
 
 #include "ns_turn_khash.h"
 
+#include <stdlib.h> // for size_t, free, malloc, NULL, realloc
+#include <string.h> // for memset, strcmp, memcpy, strlen
+
 KHASH_MAP_INIT_INT64(3, ur_map_value_type)
 
 #define MAGIC_HASH ((uint64_t)(0x90ABCDEFL))
@@ -838,9 +841,16 @@ static string_list *string_list_add(string_list *sl, const ur_string_map_key_typ
     return sl;
   }
   string_elem *elem = (string_elem *)malloc(sizeof(string_elem));
+  if (!elem) {
+    return sl;
+  }
   elem->list.next = sl;
   elem->key_size = strlen(key) + 1;
   elem->key = (char *)malloc(elem->key_size);
+  if (!elem->key) {
+    free(elem);
+    return sl;
+  }
   memcpy(elem->key, key, elem->key_size);
   elem->value = value;
   return &(elem->list);

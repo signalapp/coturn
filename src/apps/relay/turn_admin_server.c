@@ -27,7 +27,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -66,12 +65,17 @@
 #include "mainrelay.h"
 #include "userdb.h"
 
+#include "ns_ioalib_impl.h" // for ioa_socket, ip_range_t, ioa_network_...
+#include "ns_sm.h"          // for new_super_memory_region, super_memory_t
+#include "ns_turn_defs.h"   // for uint8_t, STRCPY, UNUSED_ARG, getcwd
+#include "ns_turn_maps.h"
+#include "ns_turn_msg.h" // for check_password, band_limit_t, conver...
+#include "ns_turn_server.h"
+#include "ns_turn_session.h" // for turn_session_info, addr_data, _realm...
 #include "ns_turn_utils.h"
 
-#include "ns_turn_maps.h"
-#include "ns_turn_server.h"
-
 #include "apputils.h"
+#include "stun_buffer.h" // for stun_buffer
 
 #include "turn_admin_server.h"
 
@@ -84,6 +88,12 @@
 // Signal change to add rtt metrics
 #include <fcntl.h>
 #include <unistd.h>
+///////////////////////////////
+
+struct bufferevent;
+struct evconnlistener;
+struct str_buffer;
+
 ///////////////////////////////
 
 struct admin_server adminserver;
@@ -953,7 +963,7 @@ static int run_cli_input(struct cli_session *cs, const char *buf0, unsigned int 
     if (sl) {
       cs->cmds += 1;
       if (cli_password[0] && !(cs->auth_completed)) {
-        if (check_password(cmd, cli_password)) {
+        if (check_password_equal(cmd, cli_password)) {
           if (cs->cmds >= CLI_PASSWORD_TRY_NUMBER) {
             addr_debug_print(1, &(cs->addr), "CLI authentication error");
             TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "CLI authentication error\n");
@@ -1213,13 +1223,13 @@ static void web_admin_input_handler(ioa_socket_handle s, int event_type, ioa_net
                         get_ioa_socket_cipher(s), get_ioa_socket_ssl_method(s),
                         (char *)ioa_network_buffer_data(in_buffer->nbh));
 
-          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s socket to be detached: 0x%lx, st=%d, sat=%d\n", __FUNCTION__, (long)s,
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s socket to be detached: %p, st=%d, sat=%d\n", __FUNCTION__, s,
                         get_ioa_socket_type(s), get_ioa_socket_app_type(s));
 
           ioa_socket_handle new_s = detach_ioa_socket(s);
           if (new_s) {
-            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s new detached socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,
-                          (long)new_s, get_ioa_socket_type(new_s), get_ioa_socket_app_type(new_s));
+            TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s new detached socket: %p, st=%d, sat=%d\n", __FUNCTION__, new_s,
+                          get_ioa_socket_type(new_s), get_ioa_socket_app_type(new_s));
 
             send_https_socket(new_s);
           }
@@ -1239,8 +1249,8 @@ static void web_admin_input_handler(ioa_socket_handle s, int event_type, ioa_net
 
   if (to_be_closed) {
     if (adminserver.verbose) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: web-admin socket to be closed in client handler: s=0x%lx\n", __FUNCTION__,
-                    (long)s);
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: web-admin socket to be closed in client handler: s=%p\n", __FUNCTION__,
+                    s);
     }
     set_ioa_socket_tobeclosed(s);
   }
@@ -1267,8 +1277,8 @@ static int send_socket_to_admin_server(ioa_engine_handle e, struct message_to_re
     TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: web-admin socket EMPTY\n", __FUNCTION__);
 
   } else if (s->read_event || s->bev) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: web-admin socket wrongly preset: 0x%lx : 0x%lx\n", __FUNCTION__,
-                  (long)s->read_event, (long)s->bev);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: web-admin socket wrongly preset: %p : %p\n", __FUNCTION__, s->read_event,
+                  s->bev);
 
     IOA_CLOSE_SOCKET(s);
     sm->m.sm.s = NULL;
@@ -1420,8 +1430,7 @@ void setup_admin_thread(void) {
 void admin_server_receive_message(struct bufferevent *bev, void *ptr) {
   UNUSED_ARG(ptr);
 
-  struct turn_session_info *tsi = (struct turn_session_info *)malloc(sizeof(struct turn_session_info));
-  turn_session_info_init(tsi);
+  struct turn_session_info *tsi = (struct turn_session_info *)calloc(1, sizeof(struct turn_session_info));
   int n = 0;
   struct evbuffer *input = bufferevent_get_input(bev);
 
@@ -1441,8 +1450,7 @@ void admin_server_receive_message(struct bufferevent *bev, void *ptr) {
 
     if (tsi->valid) {
       ur_map_put(adminserver.sessions, (ur_map_key_type)tsi->id, (ur_map_value_type)tsi);
-      tsi = (struct turn_session_info *)malloc(sizeof(struct turn_session_info));
-      turn_session_info_init(tsi);
+      tsi = (struct turn_session_info *)calloc(1, sizeof(struct turn_session_info));
     } else {
       turn_session_info_clean(tsi);
     }
@@ -3027,7 +3035,7 @@ static void write_https_oauth_show_keys(ioa_socket_handle s, const char *kid) {
             oauth_key okey;
             memset(&okey, 0, sizeof(okey));
 
-            if (convert_oauth_key_data(&okd, &okey, err_msg, err_msg_size) < 0) {
+            if (!convert_oauth_key_data(&okd, &okey, err_msg, err_msg_size)) {
               str_buffer_append(sb, err_msg);
             } else {
 
@@ -3312,7 +3320,7 @@ static void handle_logon_request(ioa_socket_handle s, struct http_request *hr) {
         password_t password;
         char realm[STUN_MAX_REALM_SIZE + 1] = "\0";
         if ((*(dbd->get_admin_user))((const uint8_t *)uname, (uint8_t *)realm, password) >= 0) {
-          if (!check_password(pwd, (char *)password)) {
+          if (!check_password_equal(pwd, (char *)password)) {
             STRCPY(as->as_login, uname);
             STRCPY(as->as_realm, realm);
             as->as_eff_realm[0] = 0;

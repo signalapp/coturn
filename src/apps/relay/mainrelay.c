@@ -329,6 +329,11 @@ static int make_local_listeners_list(void) {
       printf("\tIfIndex (IPv4 interface): %u\n", pCurrAddresses->IfIndex);
       printf("\tAdapter name: %s\n", pCurrAddresses->AdapterName);//*/
 
+      if (pCurrAddresses->OperStatus != IfOperStatusUp) {
+        pCurrAddresses = pCurrAddresses->Next;
+        continue;
+      }
+
       pUnicast = pCurrAddresses->FirstUnicastAddress;
       if (pUnicast != NULL) {
         // printf("\tNumber of Unicast Addresses:\n");
@@ -597,6 +602,11 @@ static int make_local_relays_list(int allow_local, int family) {
           pCurrAddresses->Length);
       printf("\tIfIndex (IPv4 interface): %u\n", pCurrAddresses->IfIndex);
       printf("\tAdapter name: %s\n", pCurrAddresses->AdapterName);//*/
+
+      if (pCurrAddresses->OperStatus != IfOperStatusUp) {
+        pCurrAddresses = pCurrAddresses->Next;
+        continue;
+      }
 
       pUnicast = pCurrAddresses->FirstUnicastAddress;
       if (pUnicast != NULL) {
@@ -1695,9 +1705,9 @@ static const struct myoption admin_long_options[] = {
 
 int init_ctr(struct ctr_state *state, const unsigned char iv[8]) {
   state->num = 0;
-  memset(state->ecount, 0, 16);
-  memset(state->ivec + 8, 0, 8);
+  memset(state->ecount, 0, sizeof(state->ecount));
   memcpy(state->ivec, iv, 8);
+  memset(state->ivec + 8, 0, sizeof(state->ivec) - 8);
   return 1;
 }
 
@@ -1817,7 +1827,7 @@ int decodedTextSize(char *input) {
 void decrypt_aes_128(char *in, const unsigned char *mykey) {
   unsigned char iv[8] = {0};
   AES_KEY key;
-  unsigned char outdata[256];
+  unsigned char outdata[256] = {0};
   AES_set_encrypt_key(mykey, 128, &key);
   int newTotalSize = decodedTextSize(in);
   int bytes_to_decode = strlen(in);
@@ -1825,7 +1835,6 @@ void decrypt_aes_128(char *in, const unsigned char *mykey) {
   char last[1024] = "";
   struct ctr_state state;
   init_ctr(&state, iv);
-  memset(outdata, '\0', sizeof(outdata));
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
   CRYPTO_ctr128_encrypt(encryptedText, outdata, newTotalSize, &key, state.ivec, state.ecount, &state.num,
@@ -2473,7 +2482,7 @@ static void read_config_file(int argc, char **argv, int pass) {
     FILE *f = NULL;
     char *full_path_to_config_file = NULL;
 
-    full_path_to_config_file = find_config_file(config_file, pass);
+    full_path_to_config_file = find_config_file(config_file);
     if (full_path_to_config_file) {
       f = fopen(full_path_to_config_file, "r");
     }
@@ -2694,7 +2703,7 @@ static int adminmain(int argc, char **argv) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name structure or symbols, choose another name: %s\n", user);
         exit(-1);
       }
-      if (SASLprep((uint8_t *)user) < 0) {
+      if (!SASLprep((uint8_t *)user)) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n", user);
         exit(-1);
       }
@@ -2702,14 +2711,14 @@ static int adminmain(int argc, char **argv) {
     case 'r':
       set_default_realm_name(optarg);
       STRCPY(realm, optarg);
-      if (SASLprep((uint8_t *)realm) < 0) {
+      if (!SASLprep((uint8_t *)realm)) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong realm: %s\n", realm);
         exit(-1);
       }
       break;
     case 'p':
       STRCPY(pwd, optarg);
-      if (SASLprep((uint8_t *)pwd) < 0) {
+      if (!SASLprep((uint8_t *)pwd)) {
         TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password: %s\n", pwd);
         exit(-1);
       }
@@ -3033,10 +3042,11 @@ int main(int argc, char **argv) {
     return adminmain(argc, argv);
   }
 
+  memset(&turn_params.default_users_db, 0, sizeof(default_users_db_t));
+  turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(free);
+
   // Zero pass apply the log options.
   read_config_file(argc, argv, 0);
-  // First pass read other config options
-  read_config_file(argc, argv, 1);
 
   {
     unsigned long cpus = get_system_active_number_of_cpus();
@@ -3055,8 +3065,8 @@ int main(int argc, char **argv) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "System enable num is %lu\n", get_system_active_number_of_cpus());
   }
 
-  memset(&turn_params.default_users_db, 0, sizeof(default_users_db_t));
-  turn_params.default_users_db.ram_db.static_accounts = ur_string_map_create(free);
+  // First pass read other config options
+  read_config_file(argc, argv, 1);
 
   struct uoptions uo;
   uo.u.m = long_options;
@@ -3428,7 +3438,7 @@ static void adjust_key_file_name(char *fn, const char *file_title, int critical)
     goto keyerr;
   } else {
 
-    full_path_to_file = find_config_file(fn, 1);
+    full_path_to_file = find_config_file(fn);
     {
       FILE *f = full_path_to_file ? fopen(full_path_to_file, "r") : NULL;
       if (!f) {
