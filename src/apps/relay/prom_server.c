@@ -47,7 +47,6 @@ prom_counter_t *turn_with_no_ping_rcvp;
 prom_counter_t *turn_allocation_response;
 prom_gauge_t *turn_session_limit;
 prom_counter_t *turn_sessions_overlimit;
-prom_counter_t *turn_ignored_denied_peer;
 
 void start_prometheus_server(void) {
   if (turn_params.prometheus == 0) {
@@ -207,9 +206,6 @@ void start_prometheus_server(void) {
 
   turn_sessions_overlimit = prom_collector_registry_must_register_metric(prom_counter_new(
       "turn_sessions_overlimit", "Count of sessions deined because it would be over the limit", 0, NULL));
-
-  turn_ignored_denied_peer = prom_collector_registry_must_register_metric(prom_counter_new(
-      "turn_ignored_denied_peer", "Count of permissions accepted but ignored because peer ip is denied", 0, NULL));
 
   promhttp_set_active_collector_registry(NULL);
 
@@ -403,12 +399,6 @@ void prom_set_session_limit(int limit) {
 void prom_inc_sessions_overlimit(void) {
   if (turn_params.prometheus == 1) {
     prom_counter_add(turn_sessions_overlimit, 1, NULL);
-  }
-}
-
-void prom_inc_ignored_denied_peer(void) {
-  if (turn_params.prometheus == 1) {
-    prom_counter_add(turn_ignored_denied_peer, 1, NULL);
   }
 }
 
