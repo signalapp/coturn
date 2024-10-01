@@ -45,6 +45,7 @@ prom_counter_t *turn_rtt_peer[8];
 prom_counter_t *turn_rtt_combined[8];
 prom_counter_t *turn_with_no_ping_rcvp;
 prom_counter_t *turn_allocation_response;
+prom_counter_t *turn_create_permission_response;
 prom_gauge_t *turn_session_limit;
 prom_counter_t *turn_sessions_overlimit;
 
@@ -236,6 +237,10 @@ void start_prometheus_server(void) {
   const char *response_labels[] = {"response_code"};
   turn_allocation_response = prom_collector_registry_must_register_metric(prom_counter_new(
       "turn_allocation_response", "Count of allocation responses sent (by error code)", 1, response_labels));
+
+  turn_create_permission_response = prom_collector_registry_must_register_metric(
+      prom_counter_new("turn_create_permission_response", "Count of create_permission responses sent (by error code)",
+                       1, response_labels));
 
   turn_session_limit = prom_collector_registry_must_register_metric(
       prom_gauge_new("turn_session_limit", "Current number of additional sessions allowed", 0, NULL));
@@ -446,6 +451,16 @@ void prom_inc_allocation_response(int err_code) {
     if (snprintf(label, sizeof(label), "%d", err_code) < (int)sizeof(label)) {
       const char *labels[] = {label};
       prom_counter_add(turn_allocation_response, 1, labels);
+    }
+  }
+}
+
+void prom_inc_create_permission_response(int err_code) {
+  if (turn_params.prometheus == 1) {
+    char label[80];
+    if (snprintf(label, sizeof(label), "%d", err_code) < (int)sizeof(label)) {
+      const char *labels[] = {label};
+      prom_counter_add(turn_create_permission_response, 1, labels);
     }
   }
 }
