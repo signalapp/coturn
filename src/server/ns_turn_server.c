@@ -3314,6 +3314,11 @@ static int handle_turn_create_permission(turn_turnserver *server, ts_ur_super_se
     }
   }
 
+  // Signal change to add metrics
+#if !defined(TURN_NO_PROMETHEUS)
+  prom_inc_create_permission_response(*err_code);
+#endif
+
   return ret;
 }
 

@@ -92,6 +92,7 @@ void prom_observe_rtt_client(int microseconds, const char *protocolgroup);
 void prom_observe_rtt_peer(int microseconds, const char *protocolgroup);
 void prom_observe_rtt_combined(int microseconds, const char *protocolgroup);
 void prom_inc_allocation_response(int err_code);
+void prom_inc_create_permission_response(int err_code);
 void prom_set_session_limit(int limit);
 void prom_inc_sessions_overlimit(void);
 
