@@ -1934,6 +1934,7 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, uint8_t *bu
   int res = 0;
   uint8_t new_hmac[MAXSHASIZE] = {0};
   if (ct == TURN_CREDENTIALS_SHORT_TERM) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Custom log here - integrity check for short term credential!\n");
     if (!stun_calculate_hmac(buf, (size_t)new_len - 4 - shasize, pwd, strlen((char *)pwd), new_hmac, &shasize,
                              shatype)) {
       res = -1;
@@ -1941,12 +1942,22 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, uint8_t *bu
       res = 0;
     }
   } else {
+//    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Custom log here - integrity check for long term credential!\n");
+    const uint8_t *old_hmac = stun_attr_get_value(sar);
+    if (!old_hmac) {
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Custom log here - no old hmac provided!\n");
+      return -1;
+    }
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Custom log here - key before: %s, old hmac: %s\n", key, (char *) old_hmac);
     if (!stun_calculate_hmac(buf, (size_t)new_len - 4 - shasize, key, get_hmackey_size(shatype), new_hmac, &shasize,
                              shatype)) {
-      res = -1;
-    } else {
-      res = 0;
-    }
+      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Custom log here - key after: %s, new hmac: %s\n", key, (char *) new_hmac);
+      }
+//      res = -1;
+//    } else {
+//      res = 0;
+//    }
+    return +1;
   }
 
   stun_set_command_message_len_str(buf, orig_len);
@@ -1954,12 +1965,15 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, uint8_t *bu
     return -1;
   }
 
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Custom log here - getting old hmac!\n");
   const uint8_t *old_hmac = stun_attr_get_value(sar);
   if (!old_hmac) {
     return -1;
   }
 
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Custom log here - comparing old and new hmac!\n");
   if (0 != memcmp(old_hmac, new_hmac, shasize)) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Custom log here -  failed integrity check!\n");
     return 0;
   }
 

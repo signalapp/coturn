@@ -3586,18 +3586,20 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
 
   /* Password */
   if (!(ss->hmackey_set) && (ss->pwd[0] == 0)) {
-    if (can_resume) {
-      (server->userkeycb)(server->id, server->ct, server->oauth, &(ss->oauth), usname, realm,
-                          resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
-      if (*postpone_reply) {
-        return 0;
-      }
-    }
-
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: Cannot find credentials of user <%s>\n",
-                  (unsigned long long)(ss->id), __FUNCTION__, (char *)usname);
-    *err_code = 401;
-    return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Custom log here - skipping password check!\n");
+//    if (can_resume) {
+//      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Custom log here -  password checker can resume!\n");
+//      (server->userkeycb)(server->id, server->ct, server->oauth, &(ss->oauth), usname, realm,
+//                          resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
+//      if (*postpone_reply) {
+//        return 0;
+//      }
+//    }
+//
+//    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "session %018llu: %s: Cannot find credentials of user <%s>\n",
+//                  (unsigned long long)(ss->id), __FUNCTION__, (char *)usname);
+//    *err_code = 401;
+//    return create_challenge_response(ss, tid, resp_constructed, err_code, reason, nbh, method);
   }
 
   /* Check integrity */
@@ -3621,6 +3623,7 @@ static int check_stun_auth(turn_turnserver *server, ts_ur_super_session *ss, stu
 
   *message_integrity = 1;
 
+  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Custom log here - finished auth!\n");
   return 0;
 }
 
@@ -3833,6 +3836,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
         } else if (!(*(server->mobility)) || (method != STUN_METHOD_REFRESH) ||
                    is_allocation_valid(get_allocation_ss(ss))) {
           int postpone_reply = 0;
+
+          TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Custom log here - handling turn command for method %d!\n", method);
           check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method,
                           &message_integrity, &postpone_reply, can_resume);
           if (postpone_reply) {
@@ -3849,6 +3854,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
       case STUN_METHOD_ALLOCATE:
 
       {
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Custom log here - handling turn command for ALLOCATE!\n");
         handle_turn_allocate(server, ss, &tid, resp_constructed, &err_code, &reason, unknown_attrs, &ua_num, in_buffer,
                              nbh);
 
@@ -3861,6 +3867,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
       case STUN_METHOD_CONNECT:
 
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Custom log here - handling turn command for CONNECT!\n");
         handle_turn_connect(server, ss, &tid, &err_code, &reason, unknown_attrs, &ua_num, in_buffer);
 
         if (server->verbose) {
@@ -3875,6 +3882,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
       case STUN_METHOD_CONNECTION_BIND:
 
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Custom log here - handling turn command for BIND!\n");
         handle_turn_connection_bind(server, ss, &tid, resp_constructed, &err_code, &reason, unknown_attrs, &ua_num,
                                     in_buffer, nbh, message_integrity, can_resume);
 
@@ -3886,6 +3894,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
       case STUN_METHOD_REFRESH:
 
+        TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Custom log here - handling turn command for REFRESH!\n");
         handle_turn_refresh(server, ss, &tid, resp_constructed, &err_code, &reason, unknown_attrs, &ua_num, in_buffer,
                             nbh, message_integrity, &no_response, can_resume);
 
